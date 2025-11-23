@@ -7,6 +7,12 @@ pub struct Gain {
     gain: f64,
 }
 
+impl Default for Gain {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Gain {
     pub fn new() -> Self {
         Self { gain: 1.0 }
