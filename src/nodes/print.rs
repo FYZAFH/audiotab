@@ -7,6 +7,12 @@ pub struct Print {
     label: String,
 }
 
+impl Default for Print {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Print {
     pub fn new() -> Self {
         Self {
