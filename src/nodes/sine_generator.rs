@@ -3,6 +3,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 use std::f64::consts::PI;
+use tokio::sync::mpsc;
 
 pub struct SineGenerator {
     frequency: f64,
@@ -54,5 +55,34 @@ impl ProcessingNode for SineGenerator {
 
         input.payload.insert("main_channel".to_string(), samples);
         Ok(input)
+    }
+
+    async fn run(
+        &self,
+        mut rx: mpsc::Receiver<DataFrame>,
+        tx: mpsc::Sender<DataFrame>,
+    ) -> Result<()> {
+        let mut phase = self.phase;
+        let phase_increment = 2.0 * PI * self.frequency / self.sample_rate;
+
+        while let Some(mut frame) = rx.recv().await {
+            let mut samples = Vec::with_capacity(self.frame_size);
+
+            for _ in 0..self.frame_size {
+                samples.push(phase.sin());
+                phase += phase_increment;
+            }
+
+            // Wrap phase to avoid overflow
+            phase %= 2.0 * PI;
+
+            frame.payload.insert("main_channel".to_string(), samples);
+
+            if tx.send(frame).await.is_err() {
+                break; // Downstream closed
+            }
+        }
+
+        Ok(())
     }
 }

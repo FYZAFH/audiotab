@@ -1,5 +1,6 @@
 use audiotab::core::{DataFrame, ProcessingNode};
 use audiotab::nodes::SineGenerator;
+use tokio::sync::mpsc;
 
 #[tokio::test]
 async fn test_sine_generator_creates_data() {
@@ -39,4 +40,40 @@ async fn test_sine_wave_values() {
     assert!(data[0].abs() < 0.01); // sin(0) ≈ 0
     assert!((data[2] - 1.0).abs() < 0.01); // sin(90°) ≈ 1
     assert!(data[4].abs() < 0.01); // sin(180°) ≈ 0
+}
+
+#[tokio::test]
+async fn test_sine_generator_streaming() {
+    let mut generator = SineGenerator::new();
+    let config = serde_json::json!({
+        "frequency": 1.0,
+        "sample_rate": 4.0,
+        "frame_size": 4
+    });
+    generator.on_create(config).await.unwrap();
+
+    let (tx_in, rx_in) = mpsc::channel::<DataFrame>(10);
+    let (tx_out, mut rx_out) = mpsc::channel(10);
+
+    let handle = tokio::spawn(async move {
+        generator.run(rx_in, tx_out).await
+    });
+
+    // Send 3 empty trigger frames
+    for i in 0..3 {
+        tx_in.send(DataFrame::new(i * 1000, i)).await.unwrap();
+    }
+    drop(tx_in);
+
+    // Receive 3 generated frames
+    let frame1 = rx_out.recv().await.unwrap();
+    let frame2 = rx_out.recv().await.unwrap();
+    let frame3 = rx_out.recv().await.unwrap();
+
+    // Verify data was generated
+    assert_eq!(frame1.payload.get("main_channel").unwrap().len(), 4);
+    assert_eq!(frame2.payload.get("main_channel").unwrap().len(), 4);
+    assert_eq!(frame3.payload.get("main_channel").unwrap().len(), 4);
+
+    handle.await.unwrap().unwrap();
 }
