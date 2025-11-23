@@ -16,32 +16,87 @@ Basic Rust backend with JSON-driven pipeline execution.
   - Gain: Signal amplification/attenuation
   - Print: Console output for debugging
 
+## Phase 2: Async Streaming ✓
+
+Concurrent node execution with tokio tasks and MPSC channels.
+
+### Features
+
+- **Streaming ProcessingNode**: New `run()` method for continuous data processing
+  - Receives frames via `mpsc::Receiver<DataFrame>`
+  - Sends processed frames via `mpsc::Sender<DataFrame>`
+  - Each node runs in its own tokio task
+- **AsyncPipeline**: Concurrent pipeline executor
+  - Spawns each node as independent tokio task
+  - MPSC channels for inter-node communication
+  - Configurable channel capacity for backpressure control
+  - Fanout pattern for multiple downstream connections
+- **PipelinePool**: Execute multiple pipeline instances concurrently
+  - Semaphore-based admission control
+  - Configurable max concurrent instances
+  - Automatic queuing when at capacity
+- **Phase Continuity**: SineGenerator maintains phase across streaming frames
+
 ### Quick Start
 
 ```bash
-# Run demo
+# Run Phase 1 demo (linear pipeline)
 cargo run
 
-# Run tests
-cargo test
+# Run Phase 2 demo (async streaming)
+cargo run --bin async_demo
 
-# Example JSON config
+# Run all tests
+cargo test
+```
+
+### Example Async Pipeline Config
+
+```json
 {
+  "pipeline_config": {
+    "channel_capacity": 10
+  },
   "nodes": [
-    {"id": "gen", "type": "SineGenerator", "config": {"frequency": 440.0}},
-    {"id": "gain", "type": "Gain", "config": {"gain": 2.0}},
-    {"id": "out", "type": "Print", "config": {"label": "Output"}}
+    {
+      "id": "sine_gen",
+      "type": "SineGenerator",
+      "config": {
+        "frequency": 440.0,
+        "sample_rate": 48000.0,
+        "frame_size": 1024
+      }
+    },
+    {
+      "id": "amplifier",
+      "type": "Gain",
+      "config": {"gain": 2.5}
+    },
+    {
+      "id": "console_out",
+      "type": "Print",
+      "config": {"label": "Async Output"}
+    }
   ],
   "connections": [
-    {"from": "gen", "to": "gain"},
-    {"from": "gain", "to": "out"}
+    {"from": "sine_gen", "to": "amplifier"},
+    {"from": "amplifier", "to": "console_out"}
   ]
 }
 ```
 
+### Architecture Improvements
+
+**Phase 1 → Phase 2:**
+- Linear sequential execution → Concurrent node execution
+- Synchronous blocking → Async non-blocking with tokio
+- No backpressure → Bounded channels with configurable capacity
+- Single pipeline instance → PipelinePool with concurrent instances
+- One-shot processing → Continuous streaming with phase continuity
+
 ### Next Steps
 
-- [ ] Async multi-node execution with tokio channels
-- [ ] Backpressure mechanism
-- [ ] Concurrent pipeline instances (PipelinePool)
 - [ ] HAL interfaces for real hardware
+- [ ] Real-time scheduling guarantees
+- [ ] Zero-copy buffer management
+- [ ] Dynamic pipeline reconfiguration
