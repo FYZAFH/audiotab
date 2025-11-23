@@ -1,6 +1,7 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use audiotab::core::{DataFrame, ProcessingNode};
+use tokio::sync::mpsc;
 
 struct DummyNode {
     multiplier: f64,
@@ -36,4 +37,65 @@ async fn test_node_process() {
 
     let result = node.process(df).await.unwrap();
     assert_eq!(result.payload.get("test").unwrap(), &vec![2.0, 4.0, 6.0]);
+}
+
+struct StreamingDummyNode {
+    multiplier: f64,
+}
+
+#[async_trait]
+impl ProcessingNode for StreamingDummyNode {
+    async fn on_create(&mut self, config: serde_json::Value) -> Result<()> {
+        self.multiplier = config["multiplier"].as_f64().unwrap_or(1.0);
+        Ok(())
+    }
+
+    async fn run(
+        &self,
+        mut rx: mpsc::Receiver<DataFrame>,
+        tx: mpsc::Sender<DataFrame>,
+    ) -> Result<()> {
+        while let Some(mut frame) = rx.recv().await {
+            if let Some(data) = frame.payload.get_mut("test") {
+                for value in data.iter_mut() {
+                    *value *= self.multiplier;
+                }
+            }
+            tx.send(frame).await.map_err(|_| anyhow!("Send failed"))?;
+        }
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn test_node_streaming() {
+    let node = StreamingDummyNode { multiplier: 2.0 };
+
+    let (tx_in, rx_in) = mpsc::channel(10);
+    let (tx_out, mut rx_out) = mpsc::channel(10);
+
+    // Spawn node task
+    let handle = tokio::spawn(async move {
+        node.run(rx_in, tx_out).await
+    });
+
+    // Send frames
+    let mut df1 = DataFrame::new(0, 0);
+    df1.payload.insert("test".to_string(), vec![1.0, 2.0]);
+    tx_in.send(df1).await.unwrap();
+
+    let mut df2 = DataFrame::new(1000, 1);
+    df2.payload.insert("test".to_string(), vec![3.0, 4.0]);
+    tx_in.send(df2).await.unwrap();
+
+    drop(tx_in); // Close channel to terminate node
+
+    // Receive results
+    let result1 = rx_out.recv().await.unwrap();
+    assert_eq!(result1.payload.get("test").unwrap(), &vec![2.0, 4.0]);
+
+    let result2 = rx_out.recv().await.unwrap();
+    assert_eq!(result2.payload.get("test").unwrap(), &vec![6.0, 8.0]);
+
+    handle.await.unwrap().unwrap();
 }
