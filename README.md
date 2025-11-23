@@ -94,9 +94,55 @@ cargo test
 - Single pipeline instance → PipelinePool with concurrent instances
 - One-shot processing → Continuous streaming with phase continuity
 
+## Phase 3: Production Readiness ✓
+
+Error recovery, observability, and resource management for production deployment.
+
+### Features
+
+- **Observability System**:
+  - NodeMetrics: Lock-free atomic counters (frames, errors, latency)
+  - MetricsCollector: Central registry for all node metrics
+  - PipelineMonitor: Human-readable reporting
+- **Error Recovery**:
+  - ErrorPolicy: Propagate, SkipFrame, UseDefault strategies
+  - RestartStrategy: Never, Immediate, Exponential, CircuitBreaker
+  - ResilientNode: Wrapper that applies policies automatically
+- **Resource Management**:
+  - BufferPool: Reusable buffer allocation with drop-based return
+  - Zero-copy DataFrame: Arc<Vec<f64>> for reference-counted sharing
+  - Reduced GC pressure in high-throughput scenarios
+
+### Quick Start
+
+```bash
+# Run Phase 3 demo (production features)
+cargo run --bin production_demo
+
+# Run all tests (including production features)
+cargo test
+```
+
+### Example with Monitoring
+
+```rust
+let mut pipeline = AsyncPipeline::from_json(config).await?;
+pipeline.start().await?;
+
+// Process frames
+for i in 0..100 {
+    pipeline.trigger(DataFrame::new(i * 1000, i)).await?;
+}
+
+// Get metrics report
+if let Some(monitor) = pipeline.get_monitor() {
+    println!("{}", monitor.generate_report());
+}
+```
+
 ### Next Steps
 
-- [ ] HAL interfaces for real hardware
-- [ ] Real-time scheduling guarantees
-- [ ] Zero-copy buffer management
-- [ ] Dynamic pipeline reconfiguration
+- [ ] Real-time scheduling with dedicated thread pools
+- [ ] Dynamic pipeline reconfiguration without restart
+- [ ] HAL interfaces for hardware integration
+- [ ] Advanced buffer management (ring buffers, NUMA awareness)

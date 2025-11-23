@@ -111,12 +111,114 @@ Nodes can implement either or both methods. The `run()` method enables continuou
 - Example: SineGenerator phase tracks across multiple triggers
 - Enables continuous signal generation without discontinuities
 
-## Phase 2 Limitations
+## Phase 2 Limitations (Addressed in Phase 3)
 
+- ~~No built-in error recovery (node errors propagate and stop pipeline)~~ → **ResilientNode with ErrorPolicy**
+- ~~No zero-copy buffer management (frames are cloned for fanout)~~ → **Arc<Vec<f64>> for reference-counted sharing**
 - No dynamic pipeline reconfiguration (must stop and rebuild)
-- No zero-copy buffer management (frames are cloned for fanout)
 - No real-time scheduling guarantees (relies on tokio scheduler)
-- No built-in error recovery (node errors propagate and stop pipeline)
 - Fixed topology (connections set at creation time)
 
-These will be addressed in future phases.
+## Phase 3: Production Readiness
+
+### Observability Architecture
+
+```
+NodeMetrics (AtomicU64)
+    ↓
+MetricsCollector (HashMap<String, Arc<NodeMetrics>>)
+    ↓
+PipelineMonitor (snapshot & format)
+```
+
+**NodeMetrics:**
+- frames_processed: AtomicU64
+- errors_count: AtomicU64
+- total_latency_us: AtomicU64
+- Thread-safe, lock-free updates
+
+**MetricsCollector:**
+- Registers Arc<NodeMetrics> per node
+- Provides snapshot() for current state
+- Shared across all pipeline components
+
+**PipelineMonitor:**
+- Wraps MetricsCollector
+- Formats human-readable reports
+- Per-node statistics
+
+### Error Recovery Architecture
+
+```
+ProcessingNode
+    ↓
+ResilientNode (wrapper)
+    ├─ ErrorPolicy (how to handle errors)
+    ├─ RestartStrategy (when to retry)
+    └─ NodeMetrics (track failures)
+```
+
+**ErrorPolicy:**
+- Propagate: Stop pipeline (default Phase 2 behavior)
+- SkipFrame: Continue with next frame
+- UseDefault: Substitute default DataFrame
+
+**RestartStrategy:**
+- Never: One-shot execution
+- Immediate: Restart on failure
+- Exponential: Backoff retry (base_ms, max_ms, max_attempts)
+- CircuitBreaker: Threshold-based failure detection
+
+**ResilientNode:**
+- Wraps any ProcessingNode
+- Catches errors during run()
+- Applies ErrorPolicy
+- Records metrics (errors, latency)
+- Composition pattern - no changes to existing nodes
+
+### Resource Management Architecture
+
+```
+BufferPool<Vec<f64>>
+    ↓
+PooledBuffer (RAII wrapper)
+    ↓
+DataFrame (Arc<PooledBuffer>)
+```
+
+**BufferPool:**
+- Mutex<Vec<Vec<f64>>> for thread-safe storage
+- get() pops from pool or allocates new
+- PooledBuffer returns on drop
+- Reduces allocation overhead
+
+**Zero-Copy DataFrame:**
+- payload: HashMap<String, Arc<Vec<f64>>>
+- clone() shares data via Arc (no copy)
+- Fanout duplicates Arc pointer, not data
+- Reference counting manages lifetime
+
+## Phase 3 Improvements
+
+**Observability:**
+- Real-time pipeline health monitoring
+- Per-node performance metrics
+- Debugging support for production issues
+
+**Resilience:**
+- Graceful error handling (no crashes)
+- Configurable failure recovery
+- Circuit breaker prevents cascading failures
+
+**Efficiency:**
+- Buffer reuse reduces GC pressure
+- Zero-copy sharing for fanout nodes
+- Lower memory footprint at scale
+
+## Phase 3 Limitations (Future Work)
+
+- No automatic restart strategy implementation yet (policies defined, not enforced)
+- No integration with external monitoring systems (Prometheus, Grafana)
+- BufferPool not yet integrated with DataFrame (manual management required)
+- No real-time scheduling guarantees
+- No dynamic reconfiguration
