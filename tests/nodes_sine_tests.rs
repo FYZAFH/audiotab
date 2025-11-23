@@ -1,5 +1,5 @@
+use audiotab::core::{DataFrame, ProcessingNode};
 use audiotab::nodes::SineGenerator;
-use audiotab::core::{ProcessingNode, DataFrame};
 
 #[tokio::test]
 async fn test_sine_generator_creates_data() {
@@ -36,7 +36,7 @@ async fn test_sine_wave_values() {
 
     // At 1 Hz with 8 samples/sec, we should get one complete sine cycle
     // Samples at 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°
-    assert!(data[0].abs() < 0.01);  // sin(0) ≈ 0
-    assert!((data[2] - 1.0).abs() < 0.01);  // sin(90°) ≈ 1
-    assert!(data[4].abs() < 0.01);  // sin(180°) ≈ 0
+    assert!(data[0].abs() < 0.01); // sin(0) ≈ 0
+    assert!((data[2] - 1.0).abs() < 0.01); // sin(90°) ≈ 1
+    assert!(data[4].abs() < 0.01); // sin(180°) ≈ 0
 }

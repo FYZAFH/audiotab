@@ -1,5 +1,5 @@
+use audiotab::core::{DataFrame, ProcessingNode};
 use audiotab::nodes::Print;
-use audiotab::core::{ProcessingNode, DataFrame};
 
 #[tokio::test]
 async fn test_print_passthrough() {
@@ -9,7 +9,8 @@ async fn test_print_passthrough() {
     print.on_create(config).await.unwrap();
 
     let mut df = DataFrame::new(1000, 1);
-    df.payload.insert("main_channel".to_string(), vec![1.0, 2.0, 3.0]);
+    df.payload
+        .insert("main_channel".to_string(), vec![1.0, 2.0, 3.0]);
 
     let result = print.process(df.clone()).await.unwrap();
 

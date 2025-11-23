@@ -1,6 +1,6 @@
 pub mod core;
-pub mod nodes;
 pub mod engine;
+pub mod nodes;
 
 use engine::Pipeline;
 

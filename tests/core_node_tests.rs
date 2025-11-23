@@ -1,6 +1,6 @@
-use audiotab::core::{DataFrame, ProcessingNode};
 use anyhow::Result;
 use async_trait::async_trait;
+use audiotab::core::{DataFrame, ProcessingNode};
 
 struct DummyNode {
     multiplier: f64,

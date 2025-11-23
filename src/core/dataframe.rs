@@ -1,5 +1,5 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 /// Basic data unit passed between processing nodes
 #[derive(Debug, Clone, Serialize, Deserialize)]

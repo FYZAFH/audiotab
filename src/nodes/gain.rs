@@ -1,7 +1,7 @@
-use async_trait::async_trait;
+use crate::core::{DataFrame, ProcessingNode};
 use anyhow::Result;
+use async_trait::async_trait;
 use serde_json::Value;
-use crate::core::{ProcessingNode, DataFrame};
 
 pub struct Gain {
     gain: f64,

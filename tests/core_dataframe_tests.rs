@@ -12,7 +12,8 @@ fn test_dataframe_creation() {
 #[test]
 fn test_dataframe_with_data() {
     let mut df = DataFrame::new(2000, 2);
-    df.payload.insert("channel1".to_string(), vec![1.0, 2.0, 3.0]);
+    df.payload
+        .insert("channel1".to_string(), vec![1.0, 2.0, 3.0]);
 
     assert_eq!(df.payload.get("channel1").unwrap(), &vec![1.0, 2.0, 3.0]);
 }

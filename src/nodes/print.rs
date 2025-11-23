@@ -1,7 +1,7 @@
-use async_trait::async_trait;
+use crate::core::{DataFrame, ProcessingNode};
 use anyhow::Result;
+use async_trait::async_trait;
 use serde_json::Value;
-use crate::core::{ProcessingNode, DataFrame};
 
 pub struct Print {
     label: String,
@@ -31,7 +31,10 @@ impl ProcessingNode for Print {
     }
 
     async fn process(&self, input: DataFrame) -> Result<DataFrame> {
-        println!("[{}] Frame #{} @ {}μs", self.label, input.sequence_id, input.timestamp);
+        println!(
+            "[{}] Frame #{} @ {}μs",
+            self.label, input.sequence_id, input.timestamp
+        );
 
         for (channel, data) in &input.payload {
             let stats = if !data.is_empty() {

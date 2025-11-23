@@ -1,14 +1,14 @@
-use async_trait::async_trait;
+use crate::core::{DataFrame, ProcessingNode};
 use anyhow::Result;
+use async_trait::async_trait;
 use serde_json::Value;
 use std::f64::consts::PI;
-use crate::core::{ProcessingNode, DataFrame};
 
 pub struct SineGenerator {
     frequency: f64,
     sample_rate: f64,
     frame_size: usize,
-    phase: f64,  // Current phase for continuous generation
+    phase: f64, // Current phase for continuous generation
 }
 
 impl Default for SineGenerator {
