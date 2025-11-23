@@ -11,6 +11,12 @@ pub struct SineGenerator {
     phase: f64,  // Current phase for continuous generation
 }
 
+impl Default for SineGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SineGenerator {
     pub fn new() -> Self {
         Self {
