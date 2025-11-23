@@ -14,7 +14,9 @@ impl BufferPool {
     }
 
     pub fn get(&self) -> PooledBuffer {
-        let mut buffers = self.buffers.lock().unwrap();
+        let mut buffers = self.buffers
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         let buffer = buffers.pop().unwrap_or_else(|| {
             Vec::with_capacity(self.capacity)
@@ -27,7 +29,10 @@ impl BufferPool {
     }
 
     pub fn pool_size(&self) -> usize {
-        self.buffers.lock().unwrap().len()
+        self.buffers
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .len()
     }
 }
 
@@ -83,7 +88,9 @@ impl Drop for PooledBuffer {
     fn drop(&mut self) {
         if let Some(mut buffer) = self.buffer.take() {
             buffer.clear();
-            let mut pool = self.pool.lock().unwrap();
+            let mut pool = self.pool
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             pool.push(buffer);
         }
     }
@@ -93,12 +100,16 @@ impl std::ops::Deref for PooledBuffer {
     type Target = Vec<f64>;
 
     fn deref(&self) -> &Self::Target {
-        self.buffer.as_ref().unwrap()
+        self.buffer
+            .as_ref()
+            .expect("PooledBuffer accessed after drop")
     }
 }
 
 impl std::ops::DerefMut for PooledBuffer {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.buffer.as_mut().unwrap()
+        self.buffer
+            .as_mut()
+            .expect("PooledBuffer accessed after drop")
     }
 }
