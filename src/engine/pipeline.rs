@@ -62,7 +62,7 @@ impl Pipeline {
         let mut execution_order = Vec::new();
 
         // Find source node (no incoming connections)
-        for (id, _) in &self.nodes {
+        for id in self.nodes.keys() {
             let has_incoming = self.connections.iter()
                 .any(|(_, to)| to == id);
             if !has_incoming {
