@@ -12,10 +12,16 @@ pub struct AsyncPipeline {
     channels: HashMap<String, mpsc::Sender<DataFrame>>,
     handles: Vec<JoinHandle<Result<()>>>,
     source_node_id: Option<String>,
+    channel_capacity: usize,
 }
 
 impl AsyncPipeline {
     pub async fn from_json(config: Value) -> Result<Self> {
+        // Parse channel capacity from config
+        let channel_capacity = config["pipeline_config"]["channel_capacity"]
+            .as_u64()
+            .unwrap_or(100) as usize;
+
         let mut nodes: HashMap<String, Box<dyn ProcessingNode>> = HashMap::new();
         let mut connections = Vec::new();
 
@@ -67,11 +73,12 @@ impl AsyncPipeline {
             channels: HashMap::new(),
             handles: Vec::new(),
             source_node_id,
+            channel_capacity,
         })
     }
 
     pub async fn start(&mut self) -> Result<()> {
-        let channel_capacity = 10;
+        let channel_capacity = self.channel_capacity;
         let mut node_channels: HashMap<String, (mpsc::Sender<DataFrame>, mpsc::Receiver<DataFrame>)> = HashMap::new();
 
         // Create channels for each node
