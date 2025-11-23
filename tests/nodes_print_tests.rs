@@ -1,5 +1,6 @@
 use audiotab::core::{DataFrame, ProcessingNode};
 use audiotab::nodes::Print;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 #[tokio::test]
@@ -11,7 +12,7 @@ async fn test_print_passthrough() {
 
     let mut df = DataFrame::new(1000, 1);
     df.payload
-        .insert("main_channel".to_string(), vec![1.0, 2.0, 3.0]);
+        .insert("main_channel".to_string(), Arc::new(vec![1.0, 2.0, 3.0]));
 
     let result = print.process(df.clone()).await.unwrap();
 
@@ -35,7 +36,7 @@ async fn test_print_streaming() {
     });
 
     let mut df = DataFrame::new(5000, 5);
-    df.payload.insert("main_channel".to_string(), vec![1.0, 2.0, 3.0]);
+    df.payload.insert("main_channel".to_string(), Arc::new(vec![1.0, 2.0, 3.0]));
     tx_in.send(df.clone()).await.unwrap();
 
     drop(tx_in);

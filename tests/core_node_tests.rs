@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use audiotab::core::{DataFrame, ProcessingNode};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 struct DummyNode {
@@ -16,10 +17,9 @@ impl ProcessingNode for DummyNode {
 
     async fn process(&self, input: DataFrame) -> Result<DataFrame> {
         let mut output = input.clone();
-        if let Some(data) = output.payload.get_mut("test") {
-            for value in data.iter_mut() {
-                *value *= self.multiplier;
-            }
+        if let Some(data) = output.payload.get("test") {
+            let multiplied: Vec<f64> = data.iter().map(|&x| x * self.multiplier).collect();
+            output.payload.insert("test".to_string(), Arc::new(multiplied));
         }
         Ok(output)
     }
@@ -33,10 +33,10 @@ async fn test_node_process() {
     node.on_create(config).await.unwrap();
 
     let mut df = DataFrame::new(0, 0);
-    df.payload.insert("test".to_string(), vec![1.0, 2.0, 3.0]);
+    df.payload.insert("test".to_string(), Arc::new(vec![1.0, 2.0, 3.0]));
 
     let result = node.process(df).await.unwrap();
-    assert_eq!(result.payload.get("test").unwrap(), &vec![2.0, 4.0, 6.0]);
+    assert_eq!(result.payload.get("test").unwrap().as_ref(), &vec![2.0, 4.0, 6.0]);
 }
 
 struct StreamingDummyNode {
@@ -56,10 +56,9 @@ impl ProcessingNode for StreamingDummyNode {
         tx: mpsc::Sender<DataFrame>,
     ) -> Result<()> {
         while let Some(mut frame) = rx.recv().await {
-            if let Some(data) = frame.payload.get_mut("test") {
-                for value in data.iter_mut() {
-                    *value *= self.multiplier;
-                }
+            if let Some(data) = frame.payload.get("test") {
+                let multiplied: Vec<f64> = data.iter().map(|&x| x * self.multiplier).collect();
+                frame.payload.insert("test".to_string(), Arc::new(multiplied));
             }
             tx.send(frame).await.map_err(|_| anyhow!("Send failed"))?;
         }
@@ -81,21 +80,21 @@ async fn test_node_streaming() {
 
     // Send frames
     let mut df1 = DataFrame::new(0, 0);
-    df1.payload.insert("test".to_string(), vec![1.0, 2.0]);
+    df1.payload.insert("test".to_string(), Arc::new(vec![1.0, 2.0]));
     tx_in.send(df1).await.unwrap();
 
     let mut df2 = DataFrame::new(1000, 1);
-    df2.payload.insert("test".to_string(), vec![3.0, 4.0]);
+    df2.payload.insert("test".to_string(), Arc::new(vec![3.0, 4.0]));
     tx_in.send(df2).await.unwrap();
 
     drop(tx_in); // Close channel to terminate node
 
     // Receive results
     let result1 = rx_out.recv().await.unwrap();
-    assert_eq!(result1.payload.get("test").unwrap(), &vec![2.0, 4.0]);
+    assert_eq!(result1.payload.get("test").unwrap().as_ref(), &vec![2.0, 4.0]);
 
     let result2 = rx_out.recv().await.unwrap();
-    assert_eq!(result2.payload.get("test").unwrap(), &vec![6.0, 8.0]);
+    assert_eq!(result2.payload.get("test").unwrap().as_ref(), &vec![6.0, 8.0]);
 
     handle.await.unwrap().unwrap();
 }

@@ -2,6 +2,7 @@ use crate::core::{DataFrame, ProcessingNode};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 pub struct Gain {
@@ -31,10 +32,9 @@ impl ProcessingNode for Gain {
 
     async fn process(&self, mut input: DataFrame) -> Result<DataFrame> {
         // Apply gain to main_channel if it exists
-        if let Some(data) = input.payload.get_mut("main_channel") {
-            for sample in data.iter_mut() {
-                *sample *= self.gain;
-            }
+        if let Some(data) = input.payload.get("main_channel") {
+            let amplified: Vec<f64> = data.iter().map(|&x| x * self.gain).collect();
+            input.payload.insert("main_channel".to_string(), Arc::new(amplified));
         }
         Ok(input)
     }
@@ -45,10 +45,10 @@ impl ProcessingNode for Gain {
         tx: mpsc::Sender<DataFrame>,
     ) -> Result<()> {
         while let Some(mut frame) = rx.recv().await {
-            if let Some(data) = frame.payload.get_mut("main_channel") {
-                for sample in data.iter_mut() {
-                    *sample *= self.gain;
-                }
+            if let Some(data) = frame.payload.get("main_channel") {
+                // Clone Arc data, apply gain, wrap in new Arc
+                let amplified: Vec<f64> = data.iter().map(|&x| x * self.gain).collect();
+                frame.payload.insert("main_channel".to_string(), Arc::new(amplified));
             }
 
             if tx.send(frame).await.is_err() {

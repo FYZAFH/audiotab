@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Basic data unit passed between processing nodes
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -10,8 +11,8 @@ pub struct DataFrame {
     /// Sequential frame number for ordering
     pub sequence_id: u64,
 
-    /// Multi-channel data keyed by channel name
-    pub payload: HashMap<String, Vec<f64>>,
+    /// Multi-channel data keyed by channel name (zero-copy via Arc)
+    pub payload: HashMap<String, Arc<Vec<f64>>>,
 
     /// Side-channel information (gain, sample_rate, etc)
     pub metadata: HashMap<String, String>,

@@ -23,7 +23,7 @@ async fn test_resilient_node_success() {
 
     // Send test frame
     let mut frame = DataFrame::new(0, 0);
-    frame.payload.insert("main_channel".to_string(), vec![1.0, 2.0]);
+    frame.payload.insert("main_channel".to_string(), Arc::new(vec![1.0, 2.0]));
     tx_in.send(frame).await.unwrap();
     drop(tx_in);
 
@@ -34,7 +34,7 @@ async fn test_resilient_node_success() {
 
     // Verify output
     let output = rx_out.recv().await.unwrap();
-    assert_eq!(output.payload.get("main_channel").unwrap(), &vec![2.0, 4.0]);
+    assert_eq!(output.payload.get("main_channel").unwrap().as_ref(), &vec![2.0, 4.0]);
 
     // Verify metrics
     assert_eq!(metrics.frames_processed(), 1);

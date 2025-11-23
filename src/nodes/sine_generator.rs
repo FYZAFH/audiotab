@@ -3,6 +3,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 use std::f64::consts::PI;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 pub struct SineGenerator {
@@ -53,7 +54,7 @@ impl ProcessingNode for SineGenerator {
             samples.push(phase.sin());
         }
 
-        input.payload.insert("main_channel".to_string(), samples);
+        input.payload.insert("main_channel".to_string(), Arc::new(samples));
         Ok(input)
     }
 
@@ -76,7 +77,7 @@ impl ProcessingNode for SineGenerator {
             // Wrap phase to avoid overflow
             phase %= 2.0 * PI;
 
-            frame.payload.insert("main_channel".to_string(), samples);
+            frame.payload.insert("main_channel".to_string(), Arc::new(samples));
 
             if tx.send(frame).await.is_err() {
                 break; // Downstream closed
