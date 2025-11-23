@@ -2,6 +2,7 @@ use crate::core::{DataFrame, ProcessingNode};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
+use tokio::sync::mpsc;
 
 pub struct Gain {
     gain: f64,
@@ -36,5 +37,25 @@ impl ProcessingNode for Gain {
             }
         }
         Ok(input)
+    }
+
+    async fn run(
+        &self,
+        mut rx: mpsc::Receiver<DataFrame>,
+        tx: mpsc::Sender<DataFrame>,
+    ) -> Result<()> {
+        while let Some(mut frame) = rx.recv().await {
+            if let Some(data) = frame.payload.get_mut("main_channel") {
+                for sample in data.iter_mut() {
+                    *sample *= self.gain;
+                }
+            }
+
+            if tx.send(frame).await.is_err() {
+                break; // Downstream closed
+            }
+        }
+
+        Ok(())
     }
 }
