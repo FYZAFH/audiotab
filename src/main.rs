@@ -1,8 +1,4 @@
-pub mod core;
-pub mod engine;
-pub mod nodes;
-
-use engine::Pipeline;
+use audiotab::engine::Pipeline;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

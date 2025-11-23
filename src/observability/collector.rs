@@ -52,3 +52,11 @@ impl Default for MetricsCollector {
         Self::new()
     }
 }
+
+impl Clone for MetricsCollector {
+    fn clone(&self) -> Self {
+        Self {
+            metrics: self.metrics.clone(),
+        }
+    }
+}

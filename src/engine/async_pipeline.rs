@@ -1,10 +1,13 @@
 use anyhow::{anyhow, Result};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use crate::core::{ProcessingNode, DataFrame};
 use crate::nodes::{SineGenerator, Gain, Print};
+use crate::observability::{NodeMetrics, MetricsCollector, PipelineMonitor};
+use crate::resilience::{ResilientNode, ErrorPolicy};
 
 pub struct AsyncPipeline {
     nodes: HashMap<String, Box<dyn ProcessingNode>>,
@@ -13,6 +16,7 @@ pub struct AsyncPipeline {
     handles: Vec<JoinHandle<Result<()>>>,
     source_node_id: Option<String>,
     channel_capacity: usize,
+    metrics_collector: Option<MetricsCollector>,
 }
 
 impl AsyncPipeline {
@@ -74,6 +78,7 @@ impl AsyncPipeline {
             handles: Vec::new(),
             source_node_id,
             channel_capacity,
+            metrics_collector: Some(MetricsCollector::new()),
         })
     }
 
@@ -103,17 +108,27 @@ impl AsyncPipeline {
                 .push(node_channels.get(to).unwrap().0.clone());
         }
 
+        // Wrap nodes with ResilientNode and metrics
+        let mut collector = self.metrics_collector.take().unwrap();
+
         // Spawn task for each node
         for (node_id, node) in self.nodes.drain() {
             let (_tx, rx) = node_channels.remove(&node_id).unwrap();
             let outputs = output_channels.remove(&node_id).unwrap_or_default();
+
+            // Create metrics for this node
+            let metrics = Arc::new(NodeMetrics::new(&node_id));
+            collector.register(&node_id, metrics.clone());
+
+            // Wrap with ResilientNode
+            let resilient = ResilientNode::new(node, metrics, ErrorPolicy::Propagate);
 
             let handle = tokio::spawn(async move {
                 let (fanout_tx, mut fanout_rx) = mpsc::channel(channel_capacity);
 
                 // Spawn node processing
                 let node_task = tokio::spawn(async move {
-                    node.run(rx, fanout_tx).await
+                    resilient.run(rx, fanout_tx).await
                 });
 
                 // Spawn fanout (send to multiple outputs)
@@ -133,6 +148,7 @@ impl AsyncPipeline {
             self.handles.push(handle);
         }
 
+        self.metrics_collector = Some(collector);
         Ok(())
     }
 
@@ -155,5 +171,9 @@ impl AsyncPipeline {
         }
 
         Ok(())
+    }
+
+    pub fn get_monitor(&self) -> Option<PipelineMonitor> {
+        self.metrics_collector.as_ref().map(|c| PipelineMonitor::new(c.clone()))
     }
 }
