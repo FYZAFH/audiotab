@@ -27,7 +27,6 @@ function FlowEditorInner() {
 
     const metadata: NodeMetadata = JSON.parse(event.dataTransfer.getData('application/reactflow'));
 
-    // Convert screen coordinates to flow coordinates
     const position = screenToFlowPosition({
       x: event.clientX,
       y: event.clientY,
