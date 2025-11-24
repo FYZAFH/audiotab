@@ -1,35 +1,61 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import FlowEditor from './components/FlowEditor/FlowEditor';
+import NodePalette from './components/NodePalette/NodePalette';
+import { Button } from './components/ui/button';
+import { useFlowStore } from './stores/flowStore';
+import { useDeployGraph } from './hooks/useTauriCommands';
 
-function App() {
-  const [count, setCount] = useState(0)
+const queryClient = new QueryClient();
+
+function AppContent() {
+  const exportGraph = useFlowStore((state) => state.exportGraph);
+  const deployMutation = useDeployGraph();
+
+  const handleDeploy = async () => {
+    const graph = exportGraph();
+    try {
+      const pipelineId = await deployMutation.mutateAsync(graph);
+      console.log('Deployed pipeline:', pipelineId);
+    } catch (error) {
+      console.error('Deploy failed:', error);
+    }
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="flex flex-col h-screen bg-slate-900">
+      {/* Top Bar */}
+      <div className="h-14 bg-slate-800 border-b border-slate-700 flex items-center px-4">
+        <h1 className="text-white text-xl font-bold">StreamLab Core</h1>
+        <div className="ml-auto space-x-2">
+          <Button onClick={handleDeploy} disabled={deployMutation.isPending}>
+            {deployMutation.isPending ? 'Deploying...' : 'Deploy'}
+          </Button>
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
+
+      {/* Main Content */}
+      <div className="flex flex-1 overflow-hidden">
+        <NodePalette />
+        <div className="flex-1">
+          <FlowEditor />
+        </div>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+
+      {/* Status Bar */}
+      <div className="h-8 bg-slate-800 border-t border-slate-700 flex items-center px-4">
+        <span className="text-slate-400 text-sm">
+          {deployMutation.isSuccess && 'Pipeline deployed successfully'}
+          {deployMutation.isError && 'Deploy failed'}
+        </span>
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
+  );
+}
