@@ -66,15 +66,18 @@ function FlowEditorInner() {
   }, [screenToFlowPosition]);
 
   return (
-    <div ref={reactFlowWrapper} className="w-full h-full bg-slate-900">
+    <div
+      ref={reactFlowWrapper}
+      className="w-full h-full bg-slate-900"
+      onDrop={onDrop}
+      onDragOver={onDragOver}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         fitView
