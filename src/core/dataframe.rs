@@ -1,9 +1,8 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Basic data unit passed between processing nodes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DataFrame {
     /// Timestamp in microseconds since epoch
     pub timestamp: u64,

@@ -5,3 +5,5 @@ pub mod hal;
 pub mod nodes;
 pub mod observability;
 pub mod resilience;
+
+pub use core::{ProcessingNode, NodeContext, DataFrame};
