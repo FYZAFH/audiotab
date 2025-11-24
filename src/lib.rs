@@ -8,4 +8,4 @@ pub mod registry;
 pub mod resilience;
 
 pub use core::{ProcessingNode, NodeContext, DataFrame};
-pub use registry::{NodeMetadata, PortMetadata, ParameterSchema, NodeMetadataFactory};
+pub use registry::{NodeMetadata, PortMetadata, ParameterSchema};

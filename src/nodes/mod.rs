@@ -1,11 +1,13 @@
-pub mod gain;
 pub mod gain_node;
-pub mod print;
-pub mod sine_generator;
 pub mod audio_source;
+pub mod trigger_source;
+pub mod debug_sink;
+pub mod fft;
+pub mod filter;
 
-pub use gain::Gain;
 pub use gain_node::GainNode;
-pub use print::Print;
-pub use sine_generator::SineGenerator;
 pub use audio_source::AudioSourceNode;
+pub use trigger_source::TriggerSourceNode;
+pub use debug_sink::DebugSinkNode;
+pub use fft::FFTNode;
+pub use filter::FilterNode;

@@ -22,33 +22,25 @@ pub fn derive_stream_node(input: TokenStream) -> TokenStream {
     let node_name = &node_info.name;
     let category = &node_info.category;
 
-    // Generate input port metadata
-    let input_metas = inputs.iter().map(|port| {
+    // Generate input ports - use add_input calls
+    let input_calls = inputs.iter().map(|port| {
         let port_id = port.ident.as_ref().unwrap().to_string();
         let port_name = port.name.as_ref().unwrap_or(&port_id);
         let data_type = port.data_type.as_ref().map(|s| s.as_str()).unwrap_or("any");
 
         quote! {
-            crate::registry::PortMetadata {
-                id: #port_id.to_string(),
-                name: #port_name.to_string(),
-                data_type: #data_type.to_string(),
-            }
+            .add_input(#port_id, #port_name, #data_type)
         }
     });
 
-    // Generate output port metadata
-    let output_metas = outputs.iter().map(|port| {
+    // Generate output ports - use add_output calls
+    let output_calls = outputs.iter().map(|port| {
         let port_id = port.ident.as_ref().unwrap().to_string();
         let port_name = port.name.as_ref().unwrap_or(&port_id);
         let data_type = port.data_type.as_ref().map(|s| s.as_str()).unwrap_or("any");
 
         quote! {
-            crate::registry::PortMetadata {
-                id: #port_id.to_string(),
-                name: #port_name.to_string(),
-                data_type: #data_type.to_string(),
-            }
+            .add_output(#port_id, #port_name, #data_type)
         }
     });
 
@@ -99,24 +91,17 @@ pub fn derive_stream_node(input: TokenStream) -> TokenStream {
     );
 
     let expanded = quote! {
-        mod #mod_name {
-            use super::*;
-
-            fn #factory_fn_name() -> crate::registry::NodeMetadata {
-                crate::registry::NodeMetadata {
-                    id: #node_id.to_string(),
-                    name: #node_name.to_string(),
-                    category: #category.to_string(),
-                    inputs: vec![#(#input_metas),*],
-                    outputs: vec![#(#output_metas),*],
-                    parameters: vec![#(#params),*],
-                    factory: || Box::new(#struct_name::default()),
-                }
-            }
-
-            ::inventory::submit! {
-                #factory_fn_name as crate::registry::NodeMetadataFactory
-            }
+        ::inventory::submit! {
+            #![crate = ::inventory]
+            crate::registry::NodeMetadata::new(
+                #node_id,
+                #node_name,
+                #category,
+            )
+            .with_factory(|| Box::new(#struct_name::default()))
+            #(#input_calls)*
+            #(#output_calls)*
+            #(.add_parameter(#params))*
         }
     };
 

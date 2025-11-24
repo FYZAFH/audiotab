@@ -1,5 +1,5 @@
 use crate::core::{DataFrame, ProcessingNode};
-use crate::nodes::{Gain, Print, SineGenerator};
+use crate::nodes::{GainNode, AudioSourceNode, DebugSinkNode};
 use anyhow::{Result, anyhow};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -27,9 +27,9 @@ impl Pipeline {
                 let node_cfg = node_config["config"].clone();
 
                 let mut node: Box<dyn ProcessingNode> = match node_type {
-                    "SineGenerator" => Box::new(SineGenerator::new()),
-                    "Gain" => Box::new(Gain::new()),
-                    "Print" => Box::new(Print::new()),
+                    "AudioSourceNode" => Box::new(AudioSourceNode::default()),
+                    "GainNode" | "Gain" => Box::new(GainNode::default()),
+                    "DebugSinkNode" | "Print" => Box::new(DebugSinkNode::default()),
                     _ => return Err(anyhow!("Unknown node type: {}", node_type)),
                 };
 
@@ -90,7 +90,7 @@ impl Pipeline {
 
         // Execute in order
         for node_id in execution_order {
-            if let Some(node) = self.nodes.get(&node_id) {
+            if let Some(node) = self.nodes.get_mut(&node_id) {
                 current_frame = node.process(current_frame).await?;
             }
         }

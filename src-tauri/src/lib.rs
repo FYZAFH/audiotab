@@ -6,6 +6,17 @@ use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  // Import all nodes to trigger inventory registration
+  use audiotab::nodes::*;
+  let _ = (
+      GainNode::default(),
+      AudioSourceNode::default(),
+      TriggerSourceNode::default(),
+      DebugSinkNode::default(),
+      FFTNode::default(),
+      FilterNode::default(),
+  );
+
   tauri::Builder::default()
     .manage(AppState::new())
     .invoke_handler(tauri::generate_handler![

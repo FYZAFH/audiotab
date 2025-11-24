@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use crate::core::{ProcessingNode, DataFrame};
-use crate::nodes::{SineGenerator, Gain, Print};
+use crate::nodes::{AudioSourceNode, GainNode, DebugSinkNode};
 use crate::observability::{NodeMetrics, MetricsCollector, PipelineMonitor};
 use crate::resilience::{ResilientNode, ErrorPolicy};
 use crate::engine::state::PipelineState;
@@ -56,9 +56,9 @@ impl AsyncPipeline {
                 let node_cfg = node_config["config"].clone();
 
                 let mut node: Box<dyn ProcessingNode> = match node_type {
-                    "SineGenerator" => Box::new(SineGenerator::new()),
-                    "Gain" => Box::new(Gain::new()),
-                    "Print" => Box::new(Print::new()),
+                    "AudioSourceNode" | "SineGenerator" => Box::new(AudioSourceNode::default()),
+                    "GainNode" | "Gain" => Box::new(GainNode::default()),
+                    "DebugSinkNode" | "Print" => Box::new(DebugSinkNode::default()),
                     _ => return Err(anyhow!("Unknown node type: {}", node_type)),
                 };
 

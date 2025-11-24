@@ -1,3 +1,3 @@
 pub mod metadata;
 
-pub use metadata::{NodeMetadata, PortMetadata, ParameterSchema, NodeFactory, NodeMetadataFactory};
+pub use metadata::{NodeMetadata, PortMetadata, ParameterSchema, NodeFactory};

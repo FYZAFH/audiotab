@@ -62,22 +62,21 @@ impl NodeRegistry {
 
     pub fn from_inventory() -> Self {
         let mut registry = Self::new();
-        for factory in inventory::iter::<audiotab::registry::NodeMetadataFactory> {
-            let meta = factory();
+        for meta in inventory::iter::<audiotab::registry::NodeMetadata> {
             // Convert to serializable metadata
             let serializable_meta = NodeMetadata {
-                id: meta.id,
-                name: meta.name,
-                category: meta.category,
-                inputs: meta.inputs.into_iter().map(|p| PortMetadata {
-                    id: p.id,
-                    name: p.name,
-                    data_type: p.data_type,
+                id: meta.id.clone(),
+                name: meta.name.clone(),
+                category: meta.category.clone(),
+                inputs: meta.inputs.iter().map(|p| PortMetadata {
+                    id: p.id.clone(),
+                    name: p.name.clone(),
+                    data_type: p.data_type.clone(),
                 }).collect(),
-                outputs: meta.outputs.into_iter().map(|p| PortMetadata {
-                    id: p.id,
-                    name: p.name,
-                    data_type: p.data_type,
+                outputs: meta.outputs.iter().map(|p| PortMetadata {
+                    id: p.id.clone(),
+                    name: p.name.clone(),
+                    data_type: p.data_type.clone(),
                 }).collect(),
                 parameters: serde_json::to_value(&meta.parameters).unwrap_or(serde_json::json!([])),
             };
