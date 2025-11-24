@@ -30,12 +30,21 @@ function FlowEditorInner() {
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
 
-    const data = event.dataTransfer.getData('application/reactflow');
+    let data = event.dataTransfer.getData('application/reactflow');
+    if (!data) {
+      data = event.dataTransfer.getData('text/plain');
+    }
     if (!data) {
       return;
     }
 
-    const metadata: NodeMetadata = JSON.parse(data);
+    let metadata: NodeMetadata;
+    try {
+      metadata = JSON.parse(data);
+    } catch {
+      console.error('Failed to parse dropped node payload:', data);
+      return;
+    }
 
     const position = screenToFlowPosition({
       x: event.clientX,

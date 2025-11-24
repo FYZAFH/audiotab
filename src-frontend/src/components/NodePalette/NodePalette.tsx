@@ -7,8 +7,15 @@ export default function NodePalette() {
   const { data: nodes, isLoading } = useNodeRegistry();
 
   const onDragStart = (event: React.DragEvent, metadata: NodeMetadata) => {
-    event.dataTransfer.setData('application/reactflow', JSON.stringify(metadata));
-    event.dataTransfer.setData('text/plain', metadata.id);
+    const payload = JSON.stringify(metadata);
+
+    try {
+      event.dataTransfer.setData('application/reactflow', payload);
+    } catch {
+      // WebView2/Safari ignore custom MIME types – nothing to do here.
+    }
+
+    event.dataTransfer.setData('text/plain', payload); // fallback that every engine exposes
     event.dataTransfer.effectAllowed = 'move';
   };
 
@@ -38,8 +45,8 @@ export default function NodePalette() {
                   onDragStart={(e) => onDragStart(e, node)}
                   className="p-3 cursor-move bg-slate-700 border-slate-600 hover:bg-slate-600"
                 >
-                  <div className="text-white text-sm">{node.name}</div>
-                  <div className="text-slate-400 text-xs mt-1">
+                  <div className="text-white text-sm pointer-events-none">{node.name}</div>
+                  <div className="text-slate-400 text-xs mt-1 pointer-events-none">
                     {node.inputs.length} in, {node.outputs.length} out
                   </div>
                 </Card>
