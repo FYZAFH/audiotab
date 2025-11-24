@@ -50,7 +50,19 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   onNodesChange: (changes) => {
     set((state) => {
       const newNodes = applyNodeChanges(changes, state.nodes) as FlowNode[];
-      saveHistory(state);
+
+      // Only save history for meaningful changes (not during active dragging)
+      const shouldSaveHistory = changes.some((change) =>
+        change.type === 'add' ||
+        change.type === 'remove' ||
+        change.type === 'reset' ||
+        (change.type === 'position' && change.dragging === false)
+      );
+
+      if (shouldSaveHistory) {
+        saveHistory(state);
+      }
+
       return { nodes: newNodes };
     });
   },
@@ -58,7 +70,18 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   onEdgesChange: (changes) => {
     set((state) => {
       const newEdges = applyEdgeChanges(changes, state.edges);
-      saveHistory(state);
+
+      // Only save history for meaningful changes (not for selection changes)
+      const shouldSaveHistory = changes.some((change) =>
+        change.type === 'add' ||
+        change.type === 'remove' ||
+        change.type === 'reset'
+      );
+
+      if (shouldSaveHistory) {
+        saveHistory(state);
+      }
+
       return { edges: newEdges };
     });
   },
