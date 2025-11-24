@@ -8,6 +8,7 @@ use crate::core::{ProcessingNode, DataFrame};
 use crate::nodes::{SineGenerator, Gain, Print};
 use crate::observability::{NodeMetrics, MetricsCollector, PipelineMonitor};
 use crate::resilience::{ResilientNode, ErrorPolicy};
+use crate::engine::state::PipelineState;
 
 pub struct AsyncPipeline {
     nodes: HashMap<String, Box<dyn ProcessingNode>>,
@@ -17,6 +18,7 @@ pub struct AsyncPipeline {
     source_node_id: Option<String>,
     channel_capacity: usize,
     metrics_collector: Option<MetricsCollector>,
+    state: PipelineState,
 }
 
 impl AsyncPipeline {
@@ -79,10 +81,37 @@ impl AsyncPipeline {
             source_node_id,
             channel_capacity,
             metrics_collector: Some(MetricsCollector::new()),
+            state: PipelineState::Idle,
         })
     }
 
+    /// Get current pipeline state
+    pub fn state(&self) -> &PipelineState {
+        &self.state
+    }
+
+    /// Set pipeline state directly (without validation)
+    pub fn set_state(&mut self, new_state: PipelineState) {
+        self.state = new_state;
+    }
+
+    /// Transition to a new state with validation
+    pub fn transition_to(&mut self, new_state: PipelineState) -> Result<()> {
+        if !self.state.can_transition_to(&new_state) {
+            return Err(anyhow!(
+                "Invalid state transition: {} -> {}",
+                self.state.name(),
+                new_state.name()
+            ));
+        }
+        self.state = new_state;
+        Ok(())
+    }
+
     pub async fn start(&mut self) -> Result<()> {
+        // Transition to Initializing state
+        self.transition_to(PipelineState::Initializing { progress: 0 })?;
+
         let channel_capacity = self.channel_capacity;
         let mut node_channels: HashMap<String, (mpsc::Sender<DataFrame>, mpsc::Receiver<DataFrame>)> = HashMap::new();
 
@@ -148,6 +177,12 @@ impl AsyncPipeline {
             self.handles.push(handle);
         }
 
+        // Transition to Running state after all nodes spawned
+        self.transition_to(PipelineState::Running {
+            start_time: Some(std::time::Instant::now()),
+            frames_processed: 0,
+        })?;
+
         self.metrics_collector = Some(collector);
         Ok(())
     }
@@ -161,12 +196,23 @@ impl AsyncPipeline {
         Ok(())
     }
 
-    pub async fn stop(self) -> Result<()> {
-        // Drop channels to signal nodes to shut down
-        drop(self.channels);
+    pub async fn stop(&mut self) -> Result<()> {
+        // Transition to Completed state before stopping
+        if let PipelineState::Running { start_time, frames_processed } = &self.state {
+            let duration = start_time.map(|t| t.elapsed());
+            self.transition_to(PipelineState::Completed {
+                duration,
+                total_frames: *frames_processed,
+            })?;
+        }
 
-        // Wait for all node tasks to complete
-        for handle in self.handles {
+        // Take ownership of channels and drop to signal nodes to shut down
+        let channels = std::mem::take(&mut self.channels);
+        drop(channels);
+
+        // Take ownership of handles and wait for completion
+        let handles = std::mem::take(&mut self.handles);
+        for handle in handles {
             handle.await??;
         }
 
