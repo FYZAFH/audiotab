@@ -4,13 +4,50 @@ Next-generation streaming multi-physics analysis & test framework.
 
 ## Development Status
 
-- **Phase 1 Complete** - Core Engine (HAL, State Machine, Priority Scheduling)
-- **Phase 2 In Progress** - Frontend & Builder
-- **Phase 3 Planned** - Hybrid Runtime & Plugin System
-- **Phase 4 Planned** - Streaming & Visualization
-- **Phase 5 Planned** - Logic Control & Advanced Features
+### Phase 1: Core Engine - COMPLETE
+- Hardware Abstraction Layer (HAL)
+- Pipeline State Machine
+- Priority-based Scheduling
+- Simulated devices (Audio + Trigger)
+- Comprehensive tests (48 tests passing)
 
-See `docs/phase1-completion.md` for Phase 1 details.
+See `docs/plans/phase1-completion.md` for Phase 1 details.
+
+### Phase 2: Frontend & Builder - COMPLETE
+- Tauri v2 desktop application
+- React Flow visual editor
+- Node palette with 6 initial nodes
+- Undo/redo system with 50-step history
+- Keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, Delete)
+- Pipeline deployment via Tauri commands
+- Status event system
+
+See `docs/plans/phase2-completion.md` for Phase 2 details.
+
+### Phase 3: Hybrid Runtime & Plugin System - PLANNED
+- PyO3 Python bridge
+- Dynamic node loading
+- Advanced DSP nodes
+- Real-time visualization
+
+### Phase 4: Streaming & Visualization - PLANNED
+- Real-time data streaming
+- Performance monitoring dashboard
+
+### Phase 5: Logic Control & Advanced Features - PLANNED
+- Advanced automation logic
+- Extended feature set
+
+## Running Phase 2
+
+```bash
+# Development mode
+cd src-tauri
+cargo tauri dev
+
+# Production build
+cargo tauri build
+```
 
 ## Phase 1: Core Engine
 
