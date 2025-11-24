@@ -1,15 +1,22 @@
+import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import FlowEditor from './components/FlowEditor/FlowEditor';
 import NodePalette from './components/NodePalette/NodePalette';
 import { Button } from './components/ui/button';
 import { useFlowStore } from './stores/flowStore';
 import { useDeployGraph } from './hooks/useTauriCommands';
+import { usePipelineStatusEvents } from './hooks/useTauriEvents';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
+  const [lastStatus, setLastStatus] = useState<string>('');
   const exportGraph = useFlowStore((state) => state.exportGraph);
   const deployMutation = useDeployGraph();
+
+  usePipelineStatusEvents((event) => {
+    setLastStatus(`Pipeline ${event.id}: ${event.state}`);
+  });
 
   const handleDeploy = async () => {
     const graph = exportGraph();
@@ -43,10 +50,7 @@ function AppContent() {
 
       {/* Status Bar */}
       <div className="h-8 bg-slate-800 border-t border-slate-700 flex items-center px-4">
-        <span className="text-slate-400 text-sm">
-          {deployMutation.isSuccess && 'Pipeline deployed successfully'}
-          {deployMutation.isError && 'Deploy failed'}
-        </span>
+        <span className="text-slate-400 text-sm">{lastStatus || 'Ready'}</span>
       </div>
     </div>
   );
