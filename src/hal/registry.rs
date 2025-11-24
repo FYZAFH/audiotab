@@ -1,4 +1,5 @@
 use super::DeviceSource;
+use super::mock::{SimulatedAudioSource, SimulatedTriggerSource};
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 
@@ -12,6 +13,14 @@ impl DeviceRegistry {
         Self {
             sources: HashMap::new(),
         }
+    }
+
+    /// Create registry with default mock devices pre-registered
+    pub fn with_defaults() -> Self {
+        let mut registry = Self::new();
+        registry.register_source("SimulatedAudio", || Box::new(SimulatedAudioSource::new()));
+        registry.register_source("SimulatedTrigger", || Box::new(SimulatedTriggerSource::new()));
+        registry
     }
 
     pub fn register_source<F>(&mut self, device_type: &str, factory: F)
@@ -35,6 +44,6 @@ impl DeviceRegistry {
 
 impl Default for DeviceRegistry {
     fn default() -> Self {
-        Self::new()
+        Self::with_defaults()
     }
 }
