@@ -9,6 +9,7 @@ use crate::nodes::{SineGenerator, Gain, Print};
 use crate::observability::{NodeMetrics, MetricsCollector, PipelineMonitor};
 use crate::resilience::{ResilientNode, ErrorPolicy};
 use crate::engine::state::PipelineState;
+use crate::engine::Priority;
 
 pub struct AsyncPipeline {
     nodes: HashMap<String, Box<dyn ProcessingNode>>,
@@ -19,6 +20,7 @@ pub struct AsyncPipeline {
     channel_capacity: usize,
     metrics_collector: Option<MetricsCollector>,
     state: PipelineState,
+    priority: Priority,
 }
 
 impl AsyncPipeline {
@@ -27,6 +29,18 @@ impl AsyncPipeline {
         let channel_capacity = config["pipeline_config"]["channel_capacity"]
             .as_u64()
             .unwrap_or(100) as usize;
+
+        // Parse priority from config
+        let priority = config["pipeline_config"]["priority"]
+            .as_str()
+            .and_then(|s| match s {
+                "Critical" => Some(Priority::Critical),
+                "High" => Some(Priority::High),
+                "Normal" => Some(Priority::Normal),
+                "Low" => Some(Priority::Low),
+                _ => None,
+            })
+            .unwrap_or(Priority::Normal);
 
         let mut nodes: HashMap<String, Box<dyn ProcessingNode>> = HashMap::new();
         let mut connections = Vec::new();
@@ -82,12 +96,18 @@ impl AsyncPipeline {
             channel_capacity,
             metrics_collector: Some(MetricsCollector::new()),
             state: PipelineState::Idle,
+            priority,
         })
     }
 
     /// Get current pipeline state
     pub fn state(&self) -> &PipelineState {
         &self.state
+    }
+
+    /// Get pipeline priority
+    pub fn priority(&self) -> Priority {
+        self.priority
     }
 
     /// Set pipeline state directly (without validation)
