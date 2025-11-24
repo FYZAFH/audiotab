@@ -1,10 +1,12 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import {
   ReactFlow,
   Background,
   Controls,
   MiniMap,
   ConnectionMode,
+  useReactFlow,
+  ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useFlowStore } from '../../stores/flowStore';
@@ -15,18 +17,24 @@ const nodeTypes = {
   custom: BaseNode,
 };
 
-export default function FlowEditor() {
+function FlowEditorInner() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useFlowStore();
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const { screenToFlowPosition } = useReactFlow();
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
+
     const metadata: NodeMetadata = JSON.parse(event.dataTransfer.getData('application/reactflow'));
-    const position = {
+
+    // Convert screen coordinates to flow coordinates
+    const position = screenToFlowPosition({
       x: event.clientX,
       y: event.clientY,
-    };
+    });
+
     useFlowStore.getState().addNode(metadata.id, position, metadata);
-  }, []);
+  }, [screenToFlowPosition]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -34,7 +42,7 @@ export default function FlowEditor() {
   }, []);
 
   return (
-    <div className="w-full h-full bg-slate-900" onDrop={onDrop} onDragOver={onDragOver}>
+    <div ref={reactFlowWrapper} className="w-full h-full bg-slate-900" onDrop={onDrop} onDragOver={onDragOver}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -50,5 +58,13 @@ export default function FlowEditor() {
         <MiniMap />
       </ReactFlow>
     </div>
+  );
+}
+
+export default function FlowEditor() {
+  return (
+    <ReactFlowProvider>
+      <FlowEditorInner />
+    </ReactFlowProvider>
   );
 }
