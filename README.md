@@ -2,7 +2,17 @@
 
 Next-generation streaming multi-physics analysis & test framework.
 
-## Phase 1: Core Engine ✓
+## Development Status
+
+- **Phase 1 Complete** - Core Engine (HAL, State Machine, Priority Scheduling)
+- **Phase 2 In Progress** - Frontend & Builder
+- **Phase 3 Planned** - Hybrid Runtime & Plugin System
+- **Phase 4 Planned** - Streaming & Visualization
+- **Phase 5 Planned** - Logic Control & Advanced Features
+
+See `docs/phase1-completion.md` for Phase 1 details.
+
+## Phase 1: Core Engine
 
 Basic Rust backend with JSON-driven pipeline execution.
 
