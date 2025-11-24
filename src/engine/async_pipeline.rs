@@ -170,14 +170,28 @@ impl AsyncPipeline {
             collector.register(&node_id, metrics.clone());
 
             // Wrap with ResilientNode
-            let resilient = ResilientNode::new(node, metrics, ErrorPolicy::Propagate);
+            let mut resilient = ResilientNode::new(node, metrics, ErrorPolicy::Propagate);
 
             let handle = tokio::spawn(async move {
                 let (fanout_tx, mut fanout_rx) = mpsc::channel(channel_capacity);
 
                 // Spawn node processing
                 let node_task = tokio::spawn(async move {
-                    resilient.run(rx, fanout_tx).await
+                    let mut rx = rx;
+                    while let Some(frame) = rx.recv().await {
+                        match resilient.process(frame).await {
+                            Ok(output) => {
+                                if fanout_tx.send(output).await.is_err() {
+                                    break;
+                                }
+                            }
+                            Err(_) => {
+                                // Error handled by ResilientNode
+                                break;
+                            }
+                        }
+                    }
+                    Ok::<(), anyhow::Error>(())
                 });
 
                 // Spawn fanout (send to multiple outputs)

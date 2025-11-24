@@ -5,7 +5,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 use std::sync::Arc;
-use tokio::sync::mpsc;
 
 pub struct ResilientNode {
     inner: Box<dyn ProcessingNode>,
@@ -33,50 +32,40 @@ impl ProcessingNode for ResilientNode {
         self.inner.on_create(config).await
     }
 
-    async fn run(
-        &self,
-        mut rx: mpsc::Receiver<DataFrame>,
-        tx: mpsc::Sender<DataFrame>,
-    ) -> Result<()> {
-        while let Some(frame) = rx.recv().await {
-            let start = self.metrics.start_processing();
+    async fn process(&mut self, input: DataFrame) -> Result<DataFrame> {
+        let start = self.metrics.start_processing();
 
-            // Try to process the frame using the inner node's process() method
-            // This allows us to catch errors on a per-frame basis
-            let result = self.inner.process(frame.clone()).await;
+        // Try to process the frame using the inner node's process() method
+        let result = self.inner.process(input.clone()).await;
 
-            match result {
-                Ok(output) => {
-                    // Success - forward output
-                    self.metrics.finish_processing(start);
-                    self.metrics.record_frame_processed();
+        match result {
+            Ok(output) => {
+                // Success - forward output
+                self.metrics.finish_processing(start);
+                self.metrics.record_frame_processed();
+                Ok(output)
+            }
+            Err(e) => {
+                // Error occurred
+                self.metrics.record_error();
 
-                    if tx.send(output).await.is_err() {
-                        break;
+                match &self.error_policy {
+                    ErrorPolicy::Propagate => {
+                        Err(e)
                     }
-                }
-                Err(_) => {
-                    // Error occurred
-                    self.metrics.record_error();
-
-                    match &self.error_policy {
-                        ErrorPolicy::Propagate => {
-                            return Err(anyhow::anyhow!("Node error"));
-                        }
-                        ErrorPolicy::SkipFrame => {
-                            // Just skip this frame
-                            continue;
-                        }
-                        ErrorPolicy::UseDefault(default_frame) => {
-                            if tx.send(default_frame.clone()).await.is_err() {
-                                break;
-                            }
-                        }
+                    ErrorPolicy::SkipFrame => {
+                        // Return input unchanged
+                        Ok(input)
+                    }
+                    ErrorPolicy::UseDefault(default_frame) => {
+                        Ok(default_frame.clone())
                     }
                 }
             }
         }
+    }
 
-        Ok(())
+    async fn on_destroy(&mut self) -> Result<()> {
+        self.inner.on_destroy().await
     }
 }

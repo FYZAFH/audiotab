@@ -54,6 +54,7 @@ pub fn parse_fields(input: &DeriveInput) -> Vec<ParamField> {
 
     fields
         .iter()
+        .filter(|f| f.attrs.iter().any(|attr| attr.path().is_ident("param")))
         .filter_map(|f| ParamField::from_field(f).ok())
         .collect()
 }

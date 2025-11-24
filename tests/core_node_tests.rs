@@ -15,7 +15,7 @@ impl ProcessingNode for DummyNode {
         Ok(())
     }
 
-    async fn process(&self, input: DataFrame) -> Result<DataFrame> {
+    async fn process(&mut self, input: DataFrame) -> Result<DataFrame> {
         let mut output = input.clone();
         if let Some(data) = output.payload.get("test") {
             let multiplied: Vec<f64> = data.iter().map(|&x| x * self.multiplier).collect();
@@ -50,32 +50,35 @@ impl ProcessingNode for StreamingDummyNode {
         Ok(())
     }
 
-    async fn run(
-        &self,
-        mut rx: mpsc::Receiver<DataFrame>,
-        tx: mpsc::Sender<DataFrame>,
-    ) -> Result<()> {
-        while let Some(mut frame) = rx.recv().await {
-            if let Some(data) = frame.payload.get("test") {
-                let multiplied: Vec<f64> = data.iter().map(|&x| x * self.multiplier).collect();
-                frame.payload.insert("test".to_string(), Arc::new(multiplied));
-            }
-            tx.send(frame).await.map_err(|_| anyhow!("Send failed"))?;
+    async fn process(&mut self, mut input: DataFrame) -> Result<DataFrame> {
+        if let Some(data) = input.payload.get("test") {
+            let multiplied: Vec<f64> = data.iter().map(|&x| x * self.multiplier).collect();
+            input.payload.insert("test".to_string(), Arc::new(multiplied));
         }
-        Ok(())
+        Ok(input)
     }
 }
 
 #[tokio::test]
 async fn test_node_streaming() {
-    let node = StreamingDummyNode { multiplier: 2.0 };
+    let mut node = StreamingDummyNode { multiplier: 2.0 };
 
-    let (tx_in, rx_in) = mpsc::channel(10);
+    let (tx_in, mut rx_in) = mpsc::channel(10);
     let (tx_out, mut rx_out) = mpsc::channel(10);
 
     // Spawn node task
     let handle = tokio::spawn(async move {
-        node.run(rx_in, tx_out).await
+        while let Some(frame) = rx_in.recv().await {
+            match node.process(frame).await {
+                Ok(output) => {
+                    if tx_out.send(output).await.is_err() {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        Ok::<(), anyhow::Error>(())
     });
 
     // Send frames

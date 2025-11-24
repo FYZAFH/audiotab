@@ -13,7 +13,7 @@ pub struct GainNode {
     #[output(name = "Audio Out", data_type = "audio_frame")]
     _output: (),
 
-    #[param(default = "0.0", min = -60.0, max = 20.0)]
+    #[param(default = "0.0", min = 0.0, max = 80.0)]
     pub gain_db: f64,
 
     #[serde(skip)]

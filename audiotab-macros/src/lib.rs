@@ -26,10 +26,7 @@ pub fn derive_stream_node(input: TokenStream) -> TokenStream {
     let params = fields.iter().filter_map(|f| {
         let field_name = f.ident.as_ref()?.to_string();
 
-        // Skip fields with #[serde(skip)]
-        let has_skip = f.default.is_none();
-        if has_skip { return None; }
-
+        // Fields must have a default value
         let default_val = f.default.as_ref()?.as_str();
         let type_name = extract_type_name(&f.ty);
 
