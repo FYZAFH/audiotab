@@ -7,21 +7,14 @@ export default function NodePalette() {
   const { data: nodes, isLoading } = useNodeRegistry();
 
   const onDragStart = (event: React.DragEvent, metadata: NodeMetadata) => {
-    console.log('🎯 [NodePalette] onDragStart called for:', metadata.name);
     const payload = JSON.stringify(metadata);
-    console.log('📦 [NodePalette] Payload:', payload.substring(0, 100) + '...');
-
     try {
       event.dataTransfer.setData('application/reactflow', payload);
-      console.log('✅ [NodePalette] Set application/reactflow');
+      event.dataTransfer.setData('text/plain', payload);
     } catch (e) {
-      console.log('⚠️ [NodePalette] Failed to set application/reactflow:', e);
+      console.error('Failed to set drag data:', e);
     }
-
-    event.dataTransfer.setData('text/plain', payload);
-    console.log('✅ [NodePalette] Set text/plain');
     event.dataTransfer.effectAllowed = 'move';
-    console.log('✅ [NodePalette] Drag started successfully');
   };
 
   if (isLoading) {
