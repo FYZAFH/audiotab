@@ -12,6 +12,10 @@ const queryClient = new QueryClient();
 function AppContent() {
   const [lastStatus, setLastStatus] = useState<string>('');
   const exportGraph = useFlowStore((state) => state.exportGraph);
+  const undo = useFlowStore((state) => state.undo);
+  const redo = useFlowStore((state) => state.redo);
+  const canUndo = useFlowStore((state) => state.canUndo());
+  const canRedo = useFlowStore((state) => state.canRedo());
   const deployMutation = useDeployGraph();
 
   usePipelineStatusEvents((event) => {
@@ -34,6 +38,12 @@ function AppContent() {
       <div className="h-14 bg-slate-800 border-b border-slate-700 flex items-center px-4">
         <h1 className="text-white text-xl font-bold">StreamLab Core</h1>
         <div className="ml-auto space-x-2">
+          <Button onClick={undo} disabled={!canUndo} variant="outline">
+            Undo
+          </Button>
+          <Button onClick={redo} disabled={!canRedo} variant="outline">
+            Redo
+          </Button>
           <Button onClick={handleDeploy} disabled={deployMutation.isPending}>
             {deployMutation.isPending ? 'Deploying...' : 'Deploy'}
           </Button>
