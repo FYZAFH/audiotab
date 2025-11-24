@@ -22,10 +22,20 @@ function FlowEditorInner() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
 
-    const metadata: NodeMetadata = JSON.parse(event.dataTransfer.getData('application/reactflow'));
+    const data = event.dataTransfer.getData('application/reactflow');
+    if (!data) {
+      return;
+    }
+
+    const metadata: NodeMetadata = JSON.parse(data);
 
     const position = screenToFlowPosition({
       x: event.clientX,
@@ -35,19 +45,16 @@ function FlowEditorInner() {
     useFlowStore.getState().addNode(metadata.id, position, metadata);
   }, [screenToFlowPosition]);
 
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  }, []);
-
   return (
-    <div ref={reactFlowWrapper} className="w-full h-full bg-slate-900" onDrop={onDrop} onDragOver={onDragOver}>
+    <div ref={reactFlowWrapper} className="w-full h-full bg-slate-900">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         fitView

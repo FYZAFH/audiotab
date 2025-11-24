@@ -8,6 +8,7 @@ export default function NodePalette() {
 
   const onDragStart = (event: React.DragEvent, metadata: NodeMetadata) => {
     event.dataTransfer.setData('application/reactflow', JSON.stringify(metadata));
+    event.dataTransfer.setData('text/plain', metadata.id);
     event.dataTransfer.effectAllowed = 'move';
   };
 
