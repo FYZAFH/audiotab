@@ -56,6 +56,24 @@ cargo tauri dev
 cargo tauri build
 ```
 
+### Important: Drag-and-Drop Configuration
+
+The React Flow editor uses HTML5 drag-and-drop for adding nodes to the canvas. To enable this in Tauri v2, the window configuration **must** set `dragDropEnabled: false` in `src-tauri/tauri.conf.json`:
+
+```json
+{
+  "app": {
+    "windows": [
+      {
+        "dragDropEnabled": false
+      }
+    ]
+  }
+}
+```
+
+**Why this is needed:** Tauri's default drag-and-drop handler intercepts all drag events at the OS level for file dropping. Setting `dragDropEnabled: false` disables Tauri's handler, allowing HTML5 drag events to reach JavaScript.
+
 ## Adding New Nodes (Phase 3)
 
 ```rust
