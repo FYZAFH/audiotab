@@ -62,7 +62,9 @@ impl NodeRegistry {
 
     pub fn from_inventory() -> Self {
         let mut registry = Self::new();
-        for meta in inventory::iter::<audiotab::registry::NodeMetadata> {
+        for wrapper in inventory::iter::<audiotab::registry::NodeMetadataFactoryWrapper> {
+            // Call the factory to create metadata at runtime
+            let meta = (wrapper.0)();
             // Convert to serializable metadata
             let serializable_meta = NodeMetadata {
                 id: meta.id.clone(),

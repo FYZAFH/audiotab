@@ -88,5 +88,11 @@ impl NodeMetadata {
     }
 }
 
+// Factory type for creating node metadata at runtime
+pub type NodeMetadataFactory = fn() -> NodeMetadata;
+
+// Wrapper for inventory collection
+pub struct NodeMetadataFactoryWrapper(pub NodeMetadataFactory);
+
 // Inventory submission type
-inventory::collect!(NodeMetadata);
+inventory::collect!(NodeMetadataFactoryWrapper);
