@@ -9,6 +9,9 @@ pub fn run() {
     .manage(AppState::new())
     .invoke_handler(tauri::generate_handler![
         commands::nodes::get_node_registry,
+        commands::pipeline::deploy_graph,
+        commands::pipeline::get_all_pipeline_states,
+        commands::pipeline::control_pipeline,
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
