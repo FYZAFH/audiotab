@@ -3,7 +3,7 @@ use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
 mod node_meta;
-use node_meta::{parse_node_info, parse_fields};
+use node_meta::{parse_node_info, parse_fields, parse_ports};
 
 #[proc_macro_derive(StreamNode, attributes(node_meta, param, input, output))]
 pub fn derive_stream_node(input: TokenStream) -> TokenStream {
@@ -15,16 +15,44 @@ pub fn derive_stream_node(input: TokenStream) -> TokenStream {
     };
 
     let fields = parse_fields(&input);
+    let (inputs, outputs) = parse_ports(&input);
 
     let struct_name = &input.ident;
     let node_id = struct_name.to_string().to_lowercase();
     let node_name = &node_info.name;
     let category = &node_info.category;
 
+    // Generate input ports
+    let input_ports = inputs.iter().map(|port| {
+        let port_id = port.ident.as_ref().unwrap().to_string();
+        let port_name = port.name.as_ref().unwrap_or(&port_id);
+        let data_type = port.data_type.as_ref().map(|s| s.as_str()).unwrap_or("any");
+
+        quote! {
+            .add_input(#port_id, #port_name, #data_type)
+        }
+    });
+
+    // Generate output ports
+    let output_ports = outputs.iter().map(|port| {
+        let port_id = port.ident.as_ref().unwrap().to_string();
+        let port_name = port.name.as_ref().unwrap_or(&port_id);
+        let data_type = port.data_type.as_ref().map(|s| s.as_str()).unwrap_or("any");
+
+        quote! {
+            .add_output(#port_id, #port_name, #data_type)
+        }
+    });
+
     // Generate parameters
     let params = fields.iter().filter_map(|f| {
         let field_name = f.ident.as_ref()?.to_string();
-        let default_val = f.default.as_ref().map(|s| s.as_str()).unwrap_or("null");
+
+        // Skip fields with #[serde(skip)]
+        let has_skip = f.default.is_none();
+        if has_skip { return None; }
+
+        let default_val = f.default.as_ref()?.as_str();
         let type_name = extract_type_name(&f.ty);
 
         let param_code = if let (Some(min), Some(max)) = (f.min, f.max) {
@@ -60,6 +88,8 @@ pub fn derive_stream_node(input: TokenStream) -> TokenStream {
                 #category,
             )
             .with_factory(|| Box::new(#struct_name::default()))
+            #(#input_ports)*
+            #(#output_ports)*
             #(.add_parameter(#params))*
         }
     };
@@ -68,7 +98,6 @@ pub fn derive_stream_node(input: TokenStream) -> TokenStream {
 }
 
 fn extract_type_name(ty: &syn::Type) -> &'static str {
-    // Simple type extraction for common types
     let type_str = quote!(#ty).to_string();
 
     if type_str.contains("f64") || type_str.contains("f32") {

@@ -57,3 +57,34 @@ pub fn parse_fields(input: &DeriveInput) -> Vec<ParamField> {
         .filter_map(|f| ParamField::from_field(f).ok())
         .collect()
 }
+
+pub fn parse_ports(input: &DeriveInput) -> (Vec<PortField>, Vec<PortField>) {
+    let fields = match &input.data {
+        syn::Data::Struct(data) => match &data.fields {
+            Fields::Named(fields) => &fields.named,
+            _ => return (Vec::new(), Vec::new()),
+        },
+        _ => return (Vec::new(), Vec::new()),
+    };
+
+    let mut inputs = Vec::new();
+    let mut outputs = Vec::new();
+
+    for field in fields.iter() {
+        // Check for #[input] attribute
+        if field.attrs.iter().any(|attr| attr.path().is_ident("input")) {
+            if let Ok(port) = PortField::from_field(field) {
+                inputs.push(port);
+            }
+        }
+
+        // Check for #[output] attribute
+        if field.attrs.iter().any(|attr| attr.path().is_ident("output")) {
+            if let Ok(port) = PortField::from_field(field) {
+                outputs.push(port);
+            }
+        }
+    }
+
+    (inputs, outputs)
+}
