@@ -59,6 +59,32 @@ impl NodeRegistry {
         registry.register(filter_node_metadata());
         registry
     }
+
+    pub fn from_inventory() -> Self {
+        let mut registry = Self::new();
+        for factory in inventory::iter::<audiotab::registry::NodeMetadataFactory> {
+            let meta = factory();
+            // Convert to serializable metadata
+            let serializable_meta = NodeMetadata {
+                id: meta.id,
+                name: meta.name,
+                category: meta.category,
+                inputs: meta.inputs.into_iter().map(|p| PortMetadata {
+                    id: p.id,
+                    name: p.name,
+                    data_type: p.data_type,
+                }).collect(),
+                outputs: meta.outputs.into_iter().map(|p| PortMetadata {
+                    id: p.id,
+                    name: p.name,
+                    data_type: p.data_type,
+                }).collect(),
+                parameters: serde_json::to_value(&meta.parameters).unwrap_or(serde_json::json!([])),
+            };
+            registry.register(serializable_meta);
+        }
+        registry
+    }
 }
 
 impl Default for NodeRegistry {

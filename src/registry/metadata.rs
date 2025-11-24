@@ -92,5 +92,4 @@ impl NodeMetadata {
 pub type NodeMetadataFactory = fn() -> NodeMetadata;
 
 // Inventory submission type
-inventory::collect!(NodeMetadata);
 inventory::collect!(NodeMetadataFactory);
