@@ -24,19 +24,26 @@ See `docs/plans/phase1-completion.md` for Phase 1 details.
 
 See `docs/plans/phase2-completion.md` for Phase 2 details.
 
-### Phase 3: Hybrid Runtime & Plugin System - PLANNED
+### Phase 3: Auto-Discovery Registry - COMPLETE
+- Procedural macro system (`#[derive(StreamNode)]`)
+- Attribute macros for metadata (`#[node_meta]`, `#[param]`, `#[input]`, `#[output]`)
+- Compile-time registration with `inventory` crate
+- Automatic NodeMetadata generation
+- All 6 nodes migrated to new system
+- Zero-boilerplate node registration
+
+See `docs/phase3-completion.md` for Phase 3 details.
+
+### Phase 4: Streaming & Visualization - PLANNED
+- Real FFT implementation with rustfft
+- Shared memory ring buffer
+- WebGL plotting
+- Real-time waveform display
+
+### Phase 5: Python Integration & Advanced Features - PLANNED
 - PyO3 Python bridge
 - Dynamic node loading
 - Advanced DSP nodes
-- Real-time visualization
-
-### Phase 4: Streaming & Visualization - PLANNED
-- Real-time data streaming
-- Performance monitoring dashboard
-
-### Phase 5: Logic Control & Advanced Features - PLANNED
-- Advanced automation logic
-- Extended feature set
 
 ## Running Phase 2
 
@@ -48,6 +55,33 @@ cargo tauri dev
 # Production build
 cargo tauri build
 ```
+
+## Adding New Nodes (Phase 3)
+
+```rust
+#[derive(StreamNode, Default, Serialize, Deserialize)]
+#[node_meta(name = "My Node", category = "Custom")]
+pub struct MyNode {
+    #[input(name = "Input", data_type = "audio_frame")]
+    _input: (),
+
+    #[output(name = "Output", data_type = "audio_frame")]
+    _output: (),
+
+    #[param(default = "1.0", min = 0.0, max = 10.0)]
+    pub gain: f64,
+}
+
+#[async_trait]
+impl ProcessingNode for MyNode {
+    async fn process(&mut self, frame: DataFrame) -> Result<DataFrame> {
+        // Your logic here
+        Ok(frame)
+    }
+}
+```
+
+Node automatically appears in the frontend!
 
 ## Phase 1: Core Engine
 
