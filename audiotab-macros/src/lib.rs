@@ -128,6 +128,10 @@ fn extract_type_name(ty: &syn::Type) -> &'static str {
 
     if type_str.contains("f64") || type_str.contains("f32") {
         "number"
+    } else if type_str.contains("u32") || type_str.contains("i32")
+        || type_str.contains("u64") || type_str.contains("i64")
+        || type_str.contains("usize") || type_str.contains("isize") {
+        "number"
     } else if type_str.contains("String") || type_str.contains("str") {
         "string"
     } else if type_str.contains("bool") {
