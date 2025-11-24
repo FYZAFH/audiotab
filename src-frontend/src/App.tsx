@@ -6,10 +6,12 @@ import { Button } from './components/ui/button';
 import { useFlowStore } from './stores/flowStore';
 import { useDeployGraph } from './hooks/useTauriCommands';
 import { usePipelineStatusEvents } from './hooks/useTauriEvents';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
+  useKeyboardShortcuts();
   const [lastStatus, setLastStatus] = useState<string>('');
   const exportGraph = useFlowStore((state) => state.exportGraph);
   const undo = useFlowStore((state) => state.undo);
