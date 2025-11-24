@@ -25,24 +25,33 @@ function FlowEditorInner() {
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
+    console.log('🔄 [FlowEditor] onDragOver - drag in progress');
   }, []);
 
   const onDrop = useCallback((event: React.DragEvent) => {
+    console.log('🎯 [FlowEditor] onDrop called');
     event.preventDefault();
 
     let data = event.dataTransfer.getData('application/reactflow');
+    console.log('📦 [FlowEditor] application/reactflow data:', data ? data.substring(0, 50) + '...' : 'EMPTY');
+
     if (!data) {
       data = event.dataTransfer.getData('text/plain');
+      console.log('📦 [FlowEditor] text/plain fallback data:', data ? data.substring(0, 50) + '...' : 'EMPTY');
     }
+
     if (!data) {
+      console.error('❌ [FlowEditor] No data found in drop event!');
+      console.log('📋 [FlowEditor] Available types:', event.dataTransfer.types);
       return;
     }
 
     let metadata: NodeMetadata;
     try {
       metadata = JSON.parse(data);
-    } catch {
-      console.error('Failed to parse dropped node payload:', data);
+      console.log('✅ [FlowEditor] Parsed metadata:', metadata.name);
+    } catch (e) {
+      console.error('❌ [FlowEditor] Failed to parse dropped node payload:', data, e);
       return;
     }
 
@@ -50,8 +59,10 @@ function FlowEditorInner() {
       x: event.clientX,
       y: event.clientY,
     });
+    console.log('📍 [FlowEditor] Drop position:', position);
 
     useFlowStore.getState().addNode(metadata.id, position, metadata);
+    console.log('✅ [FlowEditor] addNode called successfully');
   }, [screenToFlowPosition]);
 
   return (
