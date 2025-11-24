@@ -1,5 +1,6 @@
 mod state;
 mod commands;
+mod nodes;
 
 use state::AppState;
 

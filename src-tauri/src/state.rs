@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use audiotab::engine::{AsyncPipeline, PipelineState};
+use crate::nodes::*;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -50,7 +51,12 @@ impl NodeRegistry {
 
     pub fn with_defaults() -> Self {
         let mut registry = Self::new();
-        // Will add nodes in Task F
+        registry.register(audio_source_metadata());
+        registry.register(trigger_source_metadata());
+        registry.register(debug_sink_metadata());
+        registry.register(fft_node_metadata());
+        registry.register(gain_node_metadata());
+        registry.register(filter_node_metadata());
         registry
     }
 }
