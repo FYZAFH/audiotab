@@ -5,6 +5,12 @@ use tokio::sync::mpsc;
 use crate::core::DataFrame;
 
 /// Manages the lifecycle of a DeviceSource with proper state transitions
+///
+/// # State Synchronization
+///
+/// The inner device state is authoritative. This wrapper tracks state transitions
+/// but delegates all operations to the inner device. If the inner device enters
+/// an error state, that state is reflected in ManagedSource's state tracking.
 pub struct ManagedSource {
     inner: Box<dyn DeviceSource>,
     state: DeviceState,
@@ -79,7 +85,7 @@ impl ManagedSource {
         if self.state == DeviceState::Running {
             self.stop().await?;
         }
-        if self.state != DeviceState::Closed {
+        if matches!(self.state, DeviceState::Error(_)) || self.state != DeviceState::Closed {
             self.inner.close().await?;
             self.state = DeviceState::Closed;
         }

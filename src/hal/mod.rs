@@ -7,6 +7,8 @@ pub mod lifecycle;
 pub mod registry;
 pub mod mock;
 
+pub use lifecycle::ManagedSource;
+
 /// Device states during lifecycle
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeviceState {
