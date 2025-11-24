@@ -1,7 +1,7 @@
 use crate::state::{AppState, PipelineHandle};
 use audiotab::engine::PipelineState;
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Deserialize)]
 pub struct GraphJson {
@@ -11,6 +11,13 @@ pub struct GraphJson {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct PipelineStatus {
+    pub id: String,
+    pub state: String,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct PipelineStatusEvent {
     pub id: String,
     pub state: String,
     pub error: Option<String>,
@@ -26,6 +33,7 @@ pub enum PipelineAction {
 
 #[tauri::command]
 pub async fn deploy_graph(
+    app: AppHandle,
     state: State<'_, AppState>,
     graph: GraphJson,
 ) -> Result<String, String> {
@@ -35,6 +43,22 @@ pub async fn deploy_graph(
     // TODO: Parse graph and create actual pipeline in Task F
     println!("Deploying graph with {} nodes, {} edges",
              graph.nodes.len(), graph.edges.len());
+
+    // Emit status event
+    let _ = app.emit("pipeline-status", PipelineStatusEvent {
+        id: pipeline_id.clone(),
+        state: "Deploying".to_string(),
+        error: None,
+    });
+
+    // Simulate deployment delay
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+    let _ = app.emit("pipeline-status", PipelineStatusEvent {
+        id: pipeline_id.clone(),
+        state: "Running".to_string(),
+        error: None,
+    });
 
     Ok(pipeline_id)
 }
