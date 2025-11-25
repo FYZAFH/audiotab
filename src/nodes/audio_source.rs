@@ -1,8 +1,10 @@
 use crate::core::{ProcessingNode, DataFrame};
+use crate::visualization::RingBufferWriter;
 use anyhow::Result;
 use async_trait::async_trait;
 use audiotab_macros::StreamNode;
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 
 #[derive(StreamNode, Debug, Clone, Serialize, Deserialize)]
 #[node_meta(name = "Audio Source", category = "Sources")]
@@ -18,6 +20,9 @@ pub struct AudioSourceNode {
 
     #[serde(skip)]
     sequence: u64,
+
+    #[serde(skip)]
+    ring_buffer: Option<Arc<Mutex<RingBufferWriter>>>,
 }
 
 impl Default for AudioSourceNode {
@@ -27,6 +32,7 @@ impl Default for AudioSourceNode {
             sample_rate: 48000,
             buffer_size: 1024,
             sequence: 0,
+            ring_buffer: None,
         }
     }
 }
@@ -44,8 +50,16 @@ impl ProcessingNode for AudioSourceNode {
     }
 
     async fn process(&mut self, mut frame: DataFrame) -> Result<DataFrame> {
-        // Generate silent audio for now
+        // Generate silent audio for now (will be replaced with real capture)
         let samples = vec![0.0; self.buffer_size as usize];
+
+        // Write to ring buffer
+        if let Some(rb) = &self.ring_buffer {
+            if let Ok(mut writer) = rb.lock() {
+                let _ = writer.write(&vec![samples.clone()]); // Single channel for now
+            }
+        }
+
         frame.payload.insert(
             "main_channel".to_string(),
             std::sync::Arc::new(samples),

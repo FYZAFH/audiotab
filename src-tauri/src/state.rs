@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use audiotab::engine::{AsyncPipeline, PipelineState};
+use audiotab::visualization::RingBufferWriter;
 use crate::nodes::*;
 
 #[derive(Clone)]
 pub struct AppState {
     pub registry: Arc<NodeRegistry>,
     pub pipelines: Arc<Mutex<HashMap<String, PipelineHandle>>>,
+    pub ring_buffer: Arc<Mutex<RingBufferWriter>>,
 }
 
 pub struct PipelineHandle {
@@ -96,9 +98,18 @@ impl Default for NodeRegistry {
 
 impl AppState {
     pub fn new() -> Self {
+        // Initialize ring buffer (48kHz, 1 channel for now, 30 seconds)
+        let ring_buffer = RingBufferWriter::new(
+            "/tmp/audiotab_ringbuf",
+            48000,
+            1,
+            30,
+        ).expect("Failed to create ring buffer");
+
         Self {
             registry: Arc::new(NodeRegistry::with_defaults()),
             pipelines: Arc::new(Mutex::new(HashMap::new())),
+            ring_buffer: Arc::new(Mutex::new(ring_buffer)),
         }
     }
 }

@@ -4,6 +4,33 @@ use std::fs::OpenOptions;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+pub struct RingBufferWriter {
+    _mmap: MmapMut,
+    sample_rate: u64,
+    channels: usize,
+    capacity: usize,
+    samples_per_write: usize,
+    write_sequence: *mut AtomicU64,
+}
+
+// SAFETY: RingBufferWriter is safe to send between threads because:
+// - The memory-mapped file is valid for the lifetime of the writer
+// - The write_sequence pointer points to a valid AtomicU64 within the mmap
+// - All accesses to write_sequence use atomic operations
+unsafe impl Send for RingBufferWriter {}
+unsafe impl Sync for RingBufferWriter {}
+
+impl std::fmt::Debug for RingBufferWriter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RingBufferWriter")
+            .field("sample_rate", &self.sample_rate)
+            .field("channels", &self.channels)
+            .field("capacity", &self.capacity)
+            .field("samples_per_write", &self.samples_per_write)
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,15 +79,6 @@ mod tests {
         drop(writer);
         fs::remove_file(path).unwrap();
     }
-}
-
-pub struct RingBufferWriter {
-    _mmap: MmapMut,
-    sample_rate: u64,
-    channels: usize,
-    capacity: usize,
-    samples_per_write: usize,
-    write_sequence: *mut AtomicU64,
 }
 
 impl RingBufferWriter {
