@@ -4,7 +4,7 @@ mod nodes;
 mod hardware_manager;
 
 use state::AppState;
-use hardware_manager::HardwareManagerState;
+use hardware_manager::{HardwareManagerState, discover_hardware, create_hardware_device};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -28,6 +28,8 @@ pub fn run() {
         commands::pipeline::get_all_pipeline_states,
         commands::pipeline::control_pipeline,
         commands::visualization::get_ringbuffer_data,
+        discover_hardware,
+        create_hardware_device,
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
