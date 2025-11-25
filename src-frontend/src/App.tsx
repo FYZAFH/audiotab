@@ -7,12 +7,14 @@ import { useFlowStore } from './stores/flowStore';
 import { useDeployGraph } from './hooks/useTauriCommands';
 import { usePipelineStatusEvents } from './hooks/useTauriEvents';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { VisualizationDemo } from './pages/VisualizationDemo';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   useKeyboardShortcuts();
   const [lastStatus, setLastStatus] = useState<string>('');
+  const [showVizDemo, setShowVizDemo] = useState<boolean>(false);
   const exportGraph = useFlowStore((state) => state.exportGraph);
   const undo = useFlowStore((state) => state.undo);
   const redo = useFlowStore((state) => state.redo);
@@ -40,25 +42,38 @@ function AppContent() {
       <div className="h-14 bg-slate-800 border-b border-slate-700 flex items-center px-4">
         <h1 className="text-white text-xl font-bold">StreamLab Core</h1>
         <div className="ml-auto space-x-2">
-          <Button onClick={undo} disabled={!canUndo} variant="outline">
-            Undo
+          <Button onClick={() => setShowVizDemo(!showVizDemo)} variant="outline">
+            {showVizDemo ? 'Editor' : 'Viz Demo'}
           </Button>
-          <Button onClick={redo} disabled={!canRedo} variant="outline">
-            Redo
-          </Button>
-          <Button onClick={handleDeploy} disabled={deployMutation.isPending}>
-            {deployMutation.isPending ? 'Deploying...' : 'Deploy'}
-          </Button>
+          {!showVizDemo && (
+            <>
+              <Button onClick={undo} disabled={!canUndo} variant="outline">
+                Undo
+              </Button>
+              <Button onClick={redo} disabled={!canRedo} variant="outline">
+                Redo
+              </Button>
+              <Button onClick={handleDeploy} disabled={deployMutation.isPending}>
+                {deployMutation.isPending ? 'Deploying...' : 'Deploy'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        <NodePalette />
-        <div className="flex-1">
-          <FlowEditor />
+      {showVizDemo ? (
+        <div className="flex-1 overflow-auto">
+          <VisualizationDemo />
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-1 overflow-hidden">
+          <NodePalette />
+          <div className="flex-1">
+            <FlowEditor />
+          </div>
+        </div>
+      )}
 
       {/* Status Bar */}
       <div className="h-8 bg-slate-800 border-t border-slate-700 flex items-center px-4">
