@@ -28,12 +28,39 @@ mod tests {
         drop(writer);
         fs::remove_file(path).unwrap();
     }
+
+    #[test]
+    fn test_write_samples() {
+        let path = "/tmp/test_ringbuf_write";
+        let _ = fs::remove_file(path);
+
+        let mut writer = RingBufferWriter::new(path, 48000, 2, 1).unwrap();
+
+        // Write 1024 samples to each channel
+        let samples = vec![
+            vec![1.0; 1024], // channel 0
+            vec![2.0; 1024], // channel 1
+        ];
+
+        writer.write(&samples).unwrap();
+
+        // Verify write_sequence incremented
+        let seq = writer.get_write_sequence();
+        assert_eq!(seq, 1);
+
+        // Cleanup
+        drop(writer);
+        fs::remove_file(path).unwrap();
+    }
 }
 
 pub struct RingBufferWriter {
+    _mmap: MmapMut,
     sample_rate: u64,
     channels: usize,
     capacity: usize,
+    samples_per_write: usize,
+    write_sequence: *mut AtomicU64,
 }
 
 impl RingBufferWriter {
@@ -69,10 +96,54 @@ impl RingBufferWriter {
         let write_seq_ptr = &mut mmap[40..48];
         write_seq_ptr.copy_from_slice(&0u64.to_le_bytes());
 
+        // Get pointer to write_sequence for atomic operations
+        let write_sequence = unsafe {
+            &mut *(mmap[40..48].as_mut_ptr() as *mut AtomicU64)
+        };
+
         Ok(Self {
+            _mmap: mmap,
             sample_rate,
             channels,
             capacity,
+            samples_per_write: 1024,
+            write_sequence,
         })
+    }
+
+    pub fn write(&mut self, samples: &[Vec<f64>]) -> Result<()> {
+        use anyhow::ensure;
+
+        ensure!(
+            samples.len() == self.channels,
+            "Expected {} channels, got {}",
+            self.channels,
+            samples.len()
+        );
+
+        let seq = unsafe { (*self.write_sequence).load(Ordering::Acquire) };
+        let start_idx = ((seq as usize) * self.samples_per_write) % self.capacity;
+
+        // Write each channel
+        for (ch_id, ch_samples) in samples.iter().enumerate() {
+            let ch_offset = 4096 + (ch_id * self.capacity * 8);
+
+            for (i, &sample) in ch_samples.iter().enumerate() {
+                let idx = (start_idx + i) % self.capacity;
+                let offset = ch_offset + (idx * 8);
+                self._mmap[offset..offset + 8].copy_from_slice(&sample.to_le_bytes());
+            }
+        }
+
+        // Atomically increment sequence
+        unsafe {
+            (*self.write_sequence).fetch_add(1, Ordering::Release);
+        }
+
+        Ok(())
+    }
+
+    pub fn get_write_sequence(&self) -> u64 {
+        unsafe { (*self.write_sequence).load(Ordering::Acquire) }
     }
 }
