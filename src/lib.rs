@@ -6,6 +6,7 @@ pub mod nodes;
 pub mod observability;
 pub mod registry;
 pub mod resilience;
+pub mod visualization;
 
 pub use core::{ProcessingNode, NodeContext, DataFrame};
 pub use registry::{NodeMetadata, PortMetadata, ParameterSchema};
