@@ -8,6 +8,7 @@ import { useDeployGraph } from './hooks/useTauriCommands';
 import { usePipelineStatusEvents } from './hooks/useTauriEvents';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { VisualizationDemo } from './pages/VisualizationDemo';
+import { HardwareManager } from './pages/HardwareManager';
 
 const queryClient = new QueryClient();
 
@@ -15,6 +16,7 @@ function AppContent() {
   useKeyboardShortcuts();
   const [lastStatus, setLastStatus] = useState<string>('');
   const [showVizDemo, setShowVizDemo] = useState<boolean>(false);
+  const [showHardware, setShowHardware] = useState<boolean>(false);
   const exportGraph = useFlowStore((state) => state.exportGraph);
   const undo = useFlowStore((state) => state.undo);
   const redo = useFlowStore((state) => state.redo);
@@ -45,7 +47,10 @@ function AppContent() {
           <Button onClick={() => setShowVizDemo(!showVizDemo)} variant="outline">
             {showVizDemo ? 'Editor' : 'Viz Demo'}
           </Button>
-          {!showVizDemo && (
+          <Button onClick={() => setShowHardware(!showHardware)} variant="outline">
+            {showHardware ? 'Editor' : 'Hardware'}
+          </Button>
+          {!showVizDemo && !showHardware && (
             <>
               <Button onClick={undo} disabled={!canUndo} variant="outline">
                 Undo
@@ -65,6 +70,10 @@ function AppContent() {
       {showVizDemo ? (
         <div className="flex-1 overflow-auto">
           <VisualizationDemo />
+        </div>
+      ) : showHardware ? (
+        <div className="flex-1 overflow-auto">
+          <HardwareManager />
         </div>
       ) : (
         <div className="flex flex-1 overflow-hidden">
