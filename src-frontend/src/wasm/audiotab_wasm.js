@@ -89,6 +89,19 @@ export class RingBufferReader {
         return v1;
     }
     /**
+     * @param {number} channel
+     * @param {number} window_size
+     * @param {number} hop_size
+     * @param {number} num_windows
+     * @returns {Float64Array}
+     */
+    get_spectrogram(channel, window_size, hop_size, num_windows) {
+        const ret = wasm.ringbufferreader_get_spectrogram(this.__wbg_ptr, channel, window_size, hop_size, num_windows);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
      * @returns {bigint}
      */
     get_write_sequence() {

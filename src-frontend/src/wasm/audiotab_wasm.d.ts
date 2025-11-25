@@ -4,6 +4,7 @@ export class RingBufferReader {
   free(): void;
   [Symbol.dispose](): void;
   get_waveform(channel: number, num_points: number): Float64Array;
+  get_spectrogram(channel: number, window_size: number, hop_size: number, num_windows: number): Float64Array;
   get_write_sequence(): bigint;
   constructor(buffer: Uint8Array);
   readonly sample_rate: bigint;
@@ -16,6 +17,7 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_ringbufferreader_free: (a: number, b: number) => void;
   readonly ringbufferreader_channels: (a: number) => number;
+  readonly ringbufferreader_get_spectrogram: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly ringbufferreader_get_waveform: (a: number, b: number, c: number) => [number, number];
   readonly ringbufferreader_get_write_sequence: (a: number) => bigint;
   readonly ringbufferreader_new: (a: number, b: number) => number;
