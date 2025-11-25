@@ -1,6 +1,7 @@
 pub mod traits;
 pub mod types;
 pub mod registry;
+pub mod drivers;
 
 pub use traits::{HardwareDriver, Device};
 pub use types::{
@@ -9,3 +10,4 @@ pub use types::{
     ChannelMapping, ChannelRoute, Calibration,
 };
 pub use registry::HardwareRegistry;
+pub use drivers::AudioDriver;
