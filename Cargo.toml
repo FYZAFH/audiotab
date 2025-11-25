@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "src-tauri", "audiotab-macros"]
+members = [".", "src-tauri", "audiotab-macros", "wasm-module"]
 resolver = "2"
 
 [package]
