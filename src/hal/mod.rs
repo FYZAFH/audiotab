@@ -1,5 +1,6 @@
 pub mod traits;
 pub mod types;
+pub mod registry;
 
 pub use traits::{HardwareDriver, Device};
 pub use types::{
@@ -7,3 +8,4 @@ pub use types::{
     DeviceChannels, PacketBuffer, SampleData, SampleFormat,
     ChannelMapping, ChannelRoute, Calibration,
 };
+pub use registry::HardwareRegistry;

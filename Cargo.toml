@@ -21,4 +21,5 @@ crossbeam-channel = "0.5"
 cpal = "0.15"
 
 [dev-dependencies]
+tokio = { version = "1.0", features = ["full"] }
 tokio-test = "0.4"
