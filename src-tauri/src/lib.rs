@@ -24,6 +24,7 @@ pub fn run() {
         commands::pipeline::deploy_graph,
         commands::pipeline::get_all_pipeline_states,
         commands::pipeline::control_pipeline,
+        commands::visualization::get_ringbuffer_data,
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
