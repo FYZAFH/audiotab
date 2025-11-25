@@ -4,6 +4,7 @@ use cpal::traits::{HostTrait, DeviceTrait};
 use crate::hal::traits::HardwareDriver;
 use crate::hal::types::*;
 use crate::hal::Device;
+use super::audio_device::AudioDevice;
 
 pub struct AudioDriver;
 
@@ -62,9 +63,16 @@ impl HardwareDriver for AudioDriver {
         .await?
     }
 
-    fn create_device(&self, _id: &str, _config: DeviceConfig) -> Result<Box<dyn Device>> {
-        // Will implement in next task
-        anyhow::bail!("Not implemented yet")
+    fn create_device(&self, _device_id: &str, config: DeviceConfig) -> Result<Box<dyn Device>> {
+        let device = AudioDevice::new(
+            config.name,
+            config.sample_rate,
+            config.format,
+            config.buffer_size,
+            config.channel_mapping.physical_channels,
+        )?;
+
+        Ok(Box::new(device))
     }
 }
 

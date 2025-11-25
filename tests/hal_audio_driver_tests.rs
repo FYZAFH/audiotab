@@ -17,3 +17,27 @@ async fn test_audio_driver_discovery() {
         assert_eq!(device.hardware_type, HardwareType::Acoustic);
     }
 }
+
+#[tokio::test]
+async fn test_audio_device_creation() {
+    use audiotab::hal::*;
+
+    let driver = AudioDriver::new();
+    let config = DeviceConfig {
+        name: "Test Device".to_string(),
+        sample_rate: 48000,
+        format: SampleFormat::F32,
+        buffer_size: 1024,
+        channel_mapping: ChannelMapping::default(),
+        calibration: Calibration::default(),
+    };
+
+    let mut device = driver.create_device("test-id", config).unwrap();
+
+    // Should not be streaming initially
+    assert!(!device.is_streaming());
+
+    // Get channels
+    let channels = device.get_channels();
+    assert!(channels.filled_rx.is_empty());
+}
