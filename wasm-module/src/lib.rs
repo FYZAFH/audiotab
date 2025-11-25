@@ -44,6 +44,12 @@ impl RingBufferReader {
 
     #[wasm_bindgen]
     pub fn get_waveform(&self, channel: usize, num_points: usize) -> Vec<f64> {
+        // CRITICAL ISSUE 1: Channel bounds check
+        assert!(channel < self.channels, "Channel {} out of range", channel);
+
+        // CRITICAL ISSUE 2: Validate num_points to prevent division by zero
+        assert!(num_points > 0 && num_points <= self.capacity, "num_points must be between 1 and {}", self.capacity);
+
         let ch_offset = 4096 + (channel * self.capacity * 8);
         let decimation = self.capacity / num_points;
 
@@ -61,5 +67,10 @@ impl RingBufferReader {
         }
 
         result
+    }
+
+    #[wasm_bindgen]
+    pub fn get_write_sequence(&self) -> u64 {
+        u64::from_le_bytes(self.memory[40..48].try_into().unwrap())
     }
 }
