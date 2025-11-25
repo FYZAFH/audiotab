@@ -1,5 +1,8 @@
 use wasm_bindgen::prelude::*;
 
+mod stft;
+use stft::compute_stft;
+
 #[wasm_bindgen]
 pub struct RingBufferReader {
     memory: Vec<u8>,
@@ -72,5 +75,39 @@ impl RingBufferReader {
     #[wasm_bindgen]
     pub fn get_write_sequence(&self) -> u64 {
         u64::from_le_bytes(self.memory[40..48].try_into().unwrap())
+    }
+
+    #[wasm_bindgen]
+    pub fn get_spectrogram(
+        &self,
+        channel: usize,
+        window_size: usize,
+        hop_size: usize,
+        num_windows: usize,
+    ) -> Vec<f64> {
+        // Read samples for STFT
+        let sample_count = window_size + (num_windows - 1) * hop_size;
+        let samples = self.read_channel_samples(channel, sample_count);
+
+        // Compute STFT
+        compute_stft(&samples, window_size, hop_size)
+    }
+
+    fn read_channel_samples(&self, channel: usize, count: usize) -> Vec<f64> {
+        let ch_offset = 4096 + (channel * self.capacity * 8);
+        let mut samples = Vec::with_capacity(count);
+
+        for i in 0..count {
+            let idx = i % self.capacity;
+            let offset = ch_offset + (idx * 8);
+
+            if offset + 8 <= self.memory.len() {
+                samples.push(f64::from_le_bytes(
+                    self.memory[offset..offset + 8].try_into().unwrap()
+                ));
+            }
+        }
+
+        samples
     }
 }
