@@ -134,15 +134,15 @@ impl ProcessingNode for AudioInputNode {
                     };
                     let num_channels = packet.num_channels;
 
+                    // Increment sequence for this frame
+                    self.sequence += 1;
+
                     // Convert PacketBuffer to DataFrame
                     let frame = packet_to_frame(&packet, self.sequence)
                         .map_err(|e| anyhow::anyhow!(
                             "Failed to convert packet to frame (format: {}, channels: {}): {}",
                             format_name, num_channels, e
                         ))?;
-
-                    // Increment sequence for next frame
-                    self.sequence += 1;
 
                     // Write to ring buffer for visualization if available
                     if let Some(ref rb) = self.ring_buffer {
@@ -170,11 +170,13 @@ impl ProcessingNode for AudioInputNode {
                 Err(_) => {
                     // No packet available - return empty frame
                     // This is not an error, just means device hasn't produced new data yet
+                    self.sequence += 1;  // Increment for consistency
                     Ok(DataFrame::new(0, self.sequence))
                 }
             }
         } else {
             // No device channels configured - return empty frame
+            self.sequence += 1;
             Ok(DataFrame::new(0, self.sequence))
         }
     }

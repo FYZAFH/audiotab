@@ -218,7 +218,8 @@ async fn test_audio_input_node_no_packet_available() {
 
     // Should return frame with empty payload or previous frame
     // (implementation detail - can choose to return empty or cached data)
-    assert_eq!(output_frame.sequence_id, 0);
+    // Sequence should increment even for empty frames to maintain consistency
+    assert_eq!(output_frame.sequence_id, 1);
 }
 
 #[tokio::test]
