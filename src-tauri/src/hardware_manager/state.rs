@@ -30,6 +30,11 @@ impl HardwareManagerState {
         }
     }
 
+    /// Get a clone of the registry Arc for sharing with other components like KernelManager
+    pub fn get_registry_arc(&self) -> Arc<RwLock<HardwareRegistry>> {
+        Arc::clone(&self.registry)
+    }
+
     pub async fn discover_devices(&self) -> Result<Vec<DeviceInfo>> {
         let registry = self.registry.read().await;
         registry.discover_all().await
