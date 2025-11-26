@@ -8,6 +8,24 @@ use audiotab_macros::StreamNode;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
+/// AudioSourceNode provides audio input from either a hardware device or silent fallback.
+///
+/// # Output Modes
+///
+/// This node supports two distinct output modes for backward compatibility:
+///
+/// 1. **Device Mode** (when hardware device is available):
+///    - Outputs channels as `ch0`, `ch1`, `ch2`, etc.
+///    - Uses the format from the original HAL implementation
+///    - Supports multi-channel audio from the device
+///
+/// 2. **Silent Mode** (fallback when no device or no packet available):
+///    - Outputs channel as `main_channel`
+///    - Uses the legacy format for backward compatibility
+///    - Generates silent audio (zeros)
+///
+/// The difference exists to maintain compatibility with existing code that expects
+/// `main_channel` for silent audio, while properly supporting multi-channel device audio.
 #[derive(StreamNode, Serialize, Deserialize)]
 #[node_meta(name = "Audio Source", category = "Sources")]
 pub struct AudioSourceNode {
@@ -27,7 +45,7 @@ pub struct AudioSourceNode {
     sequence: u64,
 
     #[serde(skip)]
-    pub ring_buffer: Option<Arc<Mutex<RingBufferWriter>>>,
+    ring_buffer: Option<Arc<Mutex<RingBufferWriter>>>,
 
     #[serde(skip)]
     device_channels: Option<DeviceChannels>,
@@ -118,7 +136,11 @@ impl ProcessingNode for AudioSourceNode {
             self.buffer_size = bs as u32;
         }
         if let Some(nc) = config.get("num_channels").and_then(|v| v.as_u64()) {
-            self.num_channels = nc as usize;
+            let nc_usize = nc as usize;
+            if nc_usize < 1 || nc_usize > 32 {
+                anyhow::bail!("num_channels must be between 1 and 32, got {}", nc_usize);
+            }
+            self.num_channels = nc_usize;
         }
         Ok(())
     }
@@ -207,5 +229,50 @@ impl ProcessingNode for AudioSourceNode {
         self.device_channels = None;
         self.ring_buffer = None;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn test_num_channels_validation_valid() {
+        let mut node = AudioSourceNode::default();
+
+        // Test valid values
+        let config = json!({ "num_channels": 1 });
+        assert!(node.on_create(config).await.is_ok());
+        assert_eq!(node.num_channels, 1);
+
+        let config = json!({ "num_channels": 32 });
+        assert!(node.on_create(config).await.is_ok());
+        assert_eq!(node.num_channels, 32);
+
+        let config = json!({ "num_channels": 16 });
+        assert!(node.on_create(config).await.is_ok());
+        assert_eq!(node.num_channels, 16);
+    }
+
+    #[tokio::test]
+    async fn test_num_channels_validation_invalid() {
+        let mut node = AudioSourceNode::default();
+
+        // Test invalid values
+        let config = json!({ "num_channels": 0 });
+        let result = node.on_create(config).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("num_channels must be between 1 and 32"));
+
+        let config = json!({ "num_channels": 33 });
+        let result = node.on_create(config).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("num_channels must be between 1 and 32"));
+
+        let config = json!({ "num_channels": 100 });
+        let result = node.on_create(config).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("num_channels must be between 1 and 32"));
     }
 }
