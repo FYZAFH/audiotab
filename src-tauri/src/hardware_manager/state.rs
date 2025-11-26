@@ -2,9 +2,11 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use audiotab::hal::*;
 use anyhow::Result;
+use super::config::HardwareConfigManager;
 
 pub struct HardwareManagerState {
     registry: Arc<RwLock<HardwareRegistry>>,
+    config_manager: Arc<HardwareConfigManager>,
 }
 
 impl HardwareManagerState {
@@ -14,8 +16,17 @@ impl HardwareManagerState {
         // Register built-in drivers
         registry.register(AudioDriver::new());
 
+        // Use home directory for config
+        let config_path = dirs::home_dir()
+            .unwrap_or_else(|| std::env::current_dir().unwrap())
+            .join(".audiotab")
+            .join("hardware_config.json");
+
+        let config_manager = Arc::new(HardwareConfigManager::new(config_path));
+
         Self {
             registry: Arc::new(RwLock::new(registry)),
+            config_manager,
         }
     }
 
@@ -34,6 +45,10 @@ impl HardwareManagerState {
         let _device = registry.create_device(driver_id, device_id, config)?;
         // TODO: Store device in state
         Ok(())
+    }
+
+    pub fn config_manager(&self) -> &HardwareConfigManager {
+        &self.config_manager
     }
 }
 

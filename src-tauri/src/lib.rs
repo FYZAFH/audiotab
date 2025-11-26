@@ -4,7 +4,15 @@ mod nodes;
 mod hardware_manager;
 
 use state::AppState;
-use hardware_manager::{HardwareManagerState, discover_hardware, create_hardware_device};
+use hardware_manager::{
+    HardwareManagerState,
+    discover_hardware,
+    create_hardware_device,
+    get_registered_devices,
+    register_device,
+    update_device,
+    remove_device,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -30,6 +38,10 @@ pub fn run() {
         commands::visualization::get_ringbuffer_data,
         discover_hardware,
         create_hardware_device,
+        get_registered_devices,
+        register_device,
+        update_device,
+        remove_device,
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
