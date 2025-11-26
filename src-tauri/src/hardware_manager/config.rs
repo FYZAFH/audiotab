@@ -12,6 +12,11 @@ pub struct HardwareConfigManager {
 }
 
 impl HardwareConfigManager {
+    /// Creates a new HardwareConfigManager.
+    ///
+    /// # Important
+    /// This creates an empty in-memory state. You must call `load()` after
+    /// construction to read the configuration from disk.
     pub fn new(config_path: PathBuf) -> Self {
         Self {
             config_path,
@@ -54,8 +59,14 @@ impl HardwareConfigManager {
         let config = self.state.read().await;
         let json = serde_json::to_string_pretty(&*config)?;
 
-        fs::write(&self.config_path, json).await
-            .context("Failed to write config file")?;
+        // Write to temporary file first
+        let temp_path = self.config_path.with_extension("tmp");
+        fs::write(&temp_path, json).await
+            .context("Failed to write temporary config file")?;
+
+        // Atomic rename
+        fs::rename(&temp_path, &self.config_path).await
+            .context("Failed to atomically update config file")?;
 
         Ok(())
     }
