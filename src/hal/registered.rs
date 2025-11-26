@@ -43,6 +43,22 @@ pub struct RegisteredHardware {
     pub notes: String,
 }
 
+/// Hardware configuration file format
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HardwareConfig {
+    pub version: String,
+    pub registered_devices: Vec<RegisteredHardware>,
+}
+
+impl Default for HardwareConfig {
+    fn default() -> Self {
+        Self {
+            version: "1.0".to_string(),
+            registered_devices: Vec::new(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,5 +96,17 @@ mod tests {
 
         assert_eq!(hw.registration_id, deserialized.registration_id);
         assert_eq!(hw.user_name, deserialized.user_name);
+    }
+
+    #[test]
+    fn test_hardware_config_json_format() {
+        let config = HardwareConfig {
+            version: "1.0".to_string(),
+            registered_devices: vec![],
+        };
+
+        let json = serde_json::to_string_pretty(&config).unwrap();
+        assert!(json.contains("\"version\""));
+        assert!(json.contains("\"registered_devices\""));
     }
 }
