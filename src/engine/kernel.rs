@@ -89,6 +89,8 @@ impl AudioKernelRuntime {
 
         // Create devices from registered hardware
         let registered_devices = self.hardware_config.registered_devices.clone();
+        let num_registered = registered_devices.len();
+
         for registered in registered_devices {
             if !registered.enabled {
                 continue;
@@ -138,6 +140,12 @@ impl AudioKernelRuntime {
                     // Continue with other devices
                 }
             }
+        }
+
+        // Check if all devices failed to start
+        if self.active_devices.is_empty() && num_registered > 0 {
+            self.status = KernelStatus::Error;
+            return Err(anyhow!("All devices failed to start"));
         }
 
         // Start pipeline if available
@@ -246,6 +254,9 @@ impl AudioKernelRuntime {
 }
 
 // Implement Drop to ensure clean shutdown
+/// Note: This struct should be properly shut down via `shutdown()` before dropping.
+/// The Drop implementation only sends a shutdown signal but cannot await cleanup.
+/// Dropping without calling `shutdown()` may leave devices in an inconsistent state.
 impl Drop for AudioKernelRuntime {
     fn drop(&mut self) {
         // Note: Can't call async shutdown in Drop, but we can send shutdown signal
