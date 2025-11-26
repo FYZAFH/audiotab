@@ -41,6 +41,12 @@ pub enum SampleFormat {
     U8,   // 8-bit unsigned
 }
 
+impl Default for SampleFormat {
+    fn default() -> Self {
+        SampleFormat::F32
+    }
+}
+
 /// Channel mapping configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ChannelMapping {
