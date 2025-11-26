@@ -75,6 +75,21 @@ impl HardwareConfigManager {
         let config = self.state.read().await;
         Ok(config.registered_devices.clone())
     }
+
+    pub async fn register_device(&self, device: RegisteredHardware) -> Result<()> {
+        let mut config = self.state.write().await;
+
+        // Check for duplicate user_name
+        if config.registered_devices.iter().any(|d| d.user_name == device.user_name) {
+            anyhow::bail!("Device with user name '{}' already exists", device.user_name);
+        }
+
+        config.registered_devices.push(device);
+        drop(config); // Release lock before saving
+
+        self.save().await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -104,5 +119,92 @@ mod tests {
 
         let devices = manager.get_registered_devices().await.unwrap();
         assert_eq!(devices.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_register_device() {
+        use audiotab::hal::{HardwareType, Direction, AudioProtocol, ChannelMapping, Calibration, ChannelRoute};
+
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("hardware_config.json");
+
+        let manager = HardwareConfigManager::new(config_path.clone());
+        manager.ensure_config_file().await.unwrap();
+        manager.load().await.unwrap();
+
+        let hw = RegisteredHardware {
+            registration_id: "reg-001".to_string(),
+            device_id: "dev-001".to_string(),
+            hardware_name: "Test Mic".to_string(),
+            driver_id: "cpal".to_string(),
+            hardware_type: HardwareType::Acoustic,
+            direction: Direction::Input,
+            user_name: "Main Mic".to_string(),
+            enabled: true,
+            protocol: Some(AudioProtocol::CoreAudio),
+            sample_rate: 48000,
+            channels: 2,
+            channel_mapping: ChannelMapping {
+                physical_channels: 2,
+                virtual_channels: 2,
+                routing: vec![ChannelRoute::Direct(0), ChannelRoute::Direct(1)],
+            },
+            calibration: Calibration { gain: 1.0, offset: 0.0 },
+            max_voltage: 0.0,
+            notes: "".to_string(),
+        };
+
+        manager.register_device(hw.clone()).await.unwrap();
+
+        let devices = manager.get_registered_devices().await.unwrap();
+        assert_eq!(devices.len(), 1);
+        assert_eq!(devices[0].user_name, "Main Mic");
+
+        // Verify persistence
+        let content = fs::read_to_string(&config_path).await.unwrap();
+        assert!(content.contains("Main Mic"));
+    }
+
+    #[tokio::test]
+    async fn test_register_device_duplicate_user_name_fails() {
+        use audiotab::hal::{HardwareType, Direction, AudioProtocol, ChannelMapping, Calibration, ChannelRoute};
+
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("hardware_config.json");
+
+        let manager = HardwareConfigManager::new(config_path);
+        manager.ensure_config_file().await.unwrap();
+        manager.load().await.unwrap();
+
+        let hw1 = RegisteredHardware {
+            registration_id: "reg-001".to_string(),
+            device_id: "dev-001".to_string(),
+            hardware_name: "Test Mic".to_string(),
+            driver_id: "cpal".to_string(),
+            hardware_type: HardwareType::Acoustic,
+            direction: Direction::Input,
+            user_name: "Main Mic".to_string(),
+            enabled: true,
+            protocol: Some(AudioProtocol::CoreAudio),
+            sample_rate: 48000,
+            channels: 2,
+            channel_mapping: ChannelMapping {
+                physical_channels: 2,
+                virtual_channels: 2,
+                routing: vec![ChannelRoute::Direct(0), ChannelRoute::Direct(1)],
+            },
+            calibration: Calibration { gain: 1.0, offset: 0.0 },
+            max_voltage: 0.0,
+            notes: "".to_string(),
+        };
+
+        let mut hw2 = hw1.clone();
+        hw2.registration_id = "reg-002".to_string();
+
+        manager.register_device(hw1).await.unwrap();
+        let result = manager.register_device(hw2).await;
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("already exists"));
     }
 }
