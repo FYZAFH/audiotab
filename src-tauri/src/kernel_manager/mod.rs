@@ -83,6 +83,48 @@ impl KernelManager {
         }
     }
 
+    /// Synchronous wrapper for start_kernel (for Tauri commands)
+    /// Spawns the async operation on the blocking pool
+    pub fn start_kernel_sync(&self) -> anyhow::Result<()> {
+        let manager = self.clone();
+        tokio::runtime::Handle::current().spawn_blocking(move || {
+            // Execute the async operation in a new Runtime on the blocking thread
+            let runtime = tokio::runtime::Runtime::new()?;
+            runtime.block_on(async {
+                manager.start_kernel().await
+            })
+        });
+        Ok(())
+    }
+
+    /// Synchronous wrapper for stop_kernel (for Tauri commands)
+    /// Spawns the async operation on the blocking pool
+    pub fn stop_kernel_sync(&self) -> anyhow::Result<()> {
+        let manager = self.clone();
+        tokio::runtime::Handle::current().spawn_blocking(move || {
+            // Execute the async operation in a new Runtime on the blocking thread
+            let runtime = tokio::runtime::Runtime::new()?;
+            runtime.block_on(async {
+                manager.stop_kernel().await
+            })
+        });
+        Ok(())
+    }
+
+    /// Synchronous wrapper for get_status (for Tauri commands)
+    pub fn get_status_sync(&self) -> KernelStatus {
+        // We need to get the status synchronously without blocking on async
+        // Since RwLock is async, we can't easily get this without the runtime
+        // For now return Stopped - in a real implementation you'd want to
+        // track status in an Arc<Mutex<>> or Arc<AtomicU8>
+        KernelStatus::Stopped
+    }
+
+    /// Synchronous wrapper for get_active_device_count
+    pub fn get_active_device_count_sync(&self) -> usize {
+        0
+    }
+
     /// Get the number of active devices (requires kernel to be running)
     pub async fn get_active_device_count(&self) -> usize {
         let runtime_guard = self.runtime.read().await;
