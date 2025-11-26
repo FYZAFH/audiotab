@@ -13,6 +13,15 @@ use serde::{Deserialize, Serialize};
 /// - Receives DataFrame from upstream nodes
 /// - Converts DataFrame → PacketBuffer using format_converter
 /// - Sends PacketBuffer to output device channels
+///
+/// # DeviceChannels Semantics (Important)
+///
+/// For output nodes, DeviceChannels semantics are inverted compared to input nodes:
+/// - `empty_tx` is used to send FILLED buffers to the output device
+/// - `filled_rx` would receive EMPTY buffers back (not currently used)
+///
+/// This is the opposite of input nodes, where `empty_tx` sends empty buffers
+/// and `filled_rx` receives filled buffers.
 #[derive(StreamNode, Serialize, Deserialize)]
 #[node_meta(name = "Audio Output", category = "Sinks")]
 pub struct AudioOutputNode {
@@ -128,6 +137,11 @@ impl ProcessingNode for AudioOutputNode {
 
             // Send packet to device (non-blocking)
             // If device can't accept, we drop the frame (this prevents blocking the pipeline)
+            //
+            // Note: Dropping frames when the device buffer is full is acceptable behavior
+            // for real-time audio output. It prevents the processing pipeline from blocking
+            // and ensures latency remains bounded. Audio glitches from dropped frames are
+            // preferable to pipeline stalls that would affect the entire system.
             let _ = channels.empty_tx.try_send(packet);
         }
 
