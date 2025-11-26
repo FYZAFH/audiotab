@@ -1,49 +1,68 @@
-use super::DeviceSource;
-use super::mock::{SimulatedAudioSource, SimulatedTriggerSource};
-use anyhow::{anyhow, Result};
 use std::collections::HashMap;
+use std::sync::Arc;
+use anyhow::Result;
+use super::traits::HardwareDriver;
+use super::types::{DeviceInfo, DeviceConfig};
+use super::Device;
 
-/// Registry of available device types
-pub struct DeviceRegistry {
-    sources: HashMap<String, Box<dyn Fn() -> Box<dyn DeviceSource> + Send + Sync>>,
+/// Central registry for hardware drivers
+pub struct HardwareRegistry {
+    drivers: HashMap<String, Arc<dyn HardwareDriver>>,
 }
 
-impl DeviceRegistry {
+impl HardwareRegistry {
     pub fn new() -> Self {
         Self {
-            sources: HashMap::new(),
+            drivers: HashMap::new(),
         }
     }
 
-    /// Create registry with default mock devices pre-registered
-    pub fn with_defaults() -> Self {
-        let mut registry = Self::new();
-        registry.register_source("SimulatedAudio", || Box::new(SimulatedAudioSource::new()));
-        registry.register_source("SimulatedTrigger", || Box::new(SimulatedTriggerSource::new()));
-        registry
+    /// Register a hardware driver
+    pub fn register(&mut self, driver: impl HardwareDriver + 'static) {
+        let driver_id = driver.driver_id().to_string();
+        self.drivers.insert(driver_id, Arc::new(driver));
     }
 
-    pub fn register_source<F>(&mut self, device_type: &str, factory: F)
-    where
-        F: Fn() -> Box<dyn DeviceSource> + Send + Sync + 'static,
-    {
-        self.sources.insert(device_type.to_string(), Box::new(factory));
+    /// List all registered drivers
+    pub fn list_drivers(&self) -> Vec<String> {
+        self.drivers.keys().cloned().collect()
     }
 
-    pub fn create_source(&self, device_type: &str) -> Result<Box<dyn DeviceSource>> {
-        self.sources
-            .get(device_type)
-            .ok_or_else(|| anyhow!("Unknown device type: {}", device_type))
-            .map(|factory| factory())
+    /// Get driver by ID
+    pub fn get_driver(&self, driver_id: &str) -> Option<Arc<dyn HardwareDriver>> {
+        self.drivers.get(driver_id).cloned()
     }
 
-    pub fn list_sources(&self) -> Vec<String> {
-        self.sources.keys().cloned().collect()
+    /// Discover devices from all drivers
+    pub async fn discover_all(&self) -> Result<Vec<DeviceInfo>> {
+        let mut all_devices = Vec::new();
+
+        for driver in self.drivers.values() {
+            match driver.discover_devices().await {
+                Ok(devices) => all_devices.extend(devices),
+                Err(e) => eprintln!("Driver {} discovery failed: {}", driver.driver_id(), e),
+            }
+        }
+
+        Ok(all_devices)
+    }
+
+    /// Create device from any registered driver
+    pub fn create_device(
+        &self,
+        driver_id: &str,
+        device_id: &str,
+        config: DeviceConfig,
+    ) -> Result<Box<dyn Device>> {
+        let driver = self.get_driver(driver_id)
+            .ok_or_else(|| anyhow::anyhow!("Driver {} not found", driver_id))?;
+
+        driver.create_device(device_id, config)
     }
 }
 
-impl Default for DeviceRegistry {
+impl Default for HardwareRegistry {
     fn default() -> Self {
-        Self::with_defaults()
+        Self::new()
     }
 }
