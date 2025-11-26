@@ -42,7 +42,7 @@ pub enum SampleFormat {
 }
 
 /// Channel mapping configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ChannelMapping {
     pub physical_channels: usize,
     pub virtual_channels: usize,
@@ -60,7 +60,7 @@ impl Default for ChannelMapping {
 }
 
 /// Channel routing rule
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ChannelRoute {
     Direct(usize),          // Phys[i] -> Virt[i]
     Reorder(Vec<usize>),    // Phys[1,2,3] -> Virt[3,2,1]
@@ -69,7 +69,7 @@ pub enum ChannelRoute {
 }
 
 /// Calibration settings
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct Calibration {
     pub gain: f64,    // Multiply for voltage
     pub offset: f64,  // Add for SPL
