@@ -66,7 +66,10 @@ async fn test_full_device_registration_workflow() {
     assert_eq!(devices.len(), 2);
 
     // Update device
-    let mut updated_mic = devices[0].clone();
+    let mut updated_mic = devices.iter()
+        .find(|d| d.registration_id == "reg-mic-001")
+        .unwrap()
+        .clone();
     updated_mic.sample_rate = 96000;
     manager.update_device("reg-mic-001", updated_mic).await.unwrap();
 
@@ -76,10 +79,14 @@ async fn test_full_device_registration_workflow() {
     let devices2 = manager2.get_registered_devices().await.unwrap();
 
     assert_eq!(devices2.len(), 2);
-    assert_eq!(devices2[0].sample_rate, 96000);
+    let updated_mic_check = devices2.iter()
+        .find(|d| d.registration_id == "reg-mic-001")
+        .unwrap();
+    assert_eq!(updated_mic_check.sample_rate, 96000);
 
     // Remove device
     manager2.remove_device("reg-spk-001").await.unwrap();
     let devices3 = manager2.get_registered_devices().await.unwrap();
     assert_eq!(devices3.len(), 1);
+    assert_eq!(devices3[0].registration_id, "reg-mic-001");
 }
