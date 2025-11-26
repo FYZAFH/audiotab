@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { Button } from './ui/button';
 
 interface DeviceInfo {
   id: string;
@@ -32,42 +33,42 @@ export function DeviceList() {
   const specialDevices = devices.filter(d => d.hardware_type === 'Special');
 
   if (loading) {
-    return <div>Discovering devices...</div>;
+    return <div className="text-slate-400 p-5">Discovering devices...</div>;
   }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2>Hardware Manager</h2>
-        <button onClick={discoverDevices}>Refresh</button>
+    <div className="p-5">
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-white text-2xl font-bold">Hardware Manager</h2>
+        <Button onClick={discoverDevices} variant="outline">Refresh</Button>
       </div>
 
-      <section>
-        <h3>🎤 Acoustic Hardware</h3>
+      <section className="mb-8">
+        <h3 className="text-white text-xl font-semibold mb-3">🎤 Acoustic Hardware</h3>
         {acousticDevices.length === 0 ? (
-          <p>No acoustic devices found</p>
+          <p className="text-slate-400">No acoustic devices found</p>
         ) : (
-          <ul>
+          <ul className="space-y-2">
             {acousticDevices.map(device => (
-              <li key={device.id}>
-                {device.name}
-                <button style={{ marginLeft: '10px' }}>Configure</button>
+              <li key={device.id} className="flex items-center justify-between bg-slate-800 p-3 rounded">
+                <span className="text-white">{device.name}</span>
+                <Button variant="outline" size="sm">Configure</Button>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <section style={{ marginTop: '30px' }}>
-        <h3>⚙️ Special Hardware</h3>
+      <section>
+        <h3 className="text-white text-xl font-semibold mb-3">⚙️ Special Hardware</h3>
         {specialDevices.length === 0 ? (
-          <p>No special devices found</p>
+          <p className="text-slate-400">No special devices found</p>
         ) : (
-          <ul>
+          <ul className="space-y-2">
             {specialDevices.map(device => (
-              <li key={device.id}>
-                {device.name}
-                <button style={{ marginLeft: '10px' }}>Configure</button>
+              <li key={device.id} className="flex items-center justify-between bg-slate-800 p-3 rounded">
+                <span className="text-white">{device.name}</span>
+                <Button variant="outline" size="sm">Configure</Button>
               </li>
             ))}
           </ul>
