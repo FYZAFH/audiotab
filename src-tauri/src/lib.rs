@@ -1,7 +1,7 @@
 mod state;
 mod commands;
 mod nodes;
-mod hardware_manager;
+pub mod hardware_manager;
 
 use state::AppState;
 use hardware_manager::{
