@@ -14,6 +14,8 @@ use hardware_manager::{
     update_device,
     remove_device,
 };
+use kernel_manager::KernelManager;
+use audiotab::hal::HardwareConfig;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -28,9 +30,19 @@ pub fn run() {
       FilterNode::default(),
   );
 
+  // Create shared HardwareManagerState which includes registry
+  let hardware_state = HardwareManagerState::new();
+
+  // Create KernelManager with shared registry from HardwareManagerState
+  let kernel_manager = KernelManager::new(
+    hardware_state.get_registry_arc(),
+    HardwareConfig::default(),
+  );
+
   tauri::Builder::default()
     .manage(AppState::new())
-    .manage(HardwareManagerState::new())
+    .manage(hardware_state)
+    .manage(kernel_manager)
     .invoke_handler(tauri::generate_handler![
         commands::nodes::get_node_registry,
         commands::pipeline::deploy_graph,
@@ -57,3 +69,4 @@ pub fn run() {
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
+

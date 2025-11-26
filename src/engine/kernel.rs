@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tokio::sync::broadcast;
+use std::sync::Arc;
+use tokio::sync::{broadcast, RwLock};
 use tokio::task::JoinHandle;
 
 use crate::hal::{Device, DeviceChannels, HardwareRegistry, DeviceConfig};
@@ -38,16 +39,25 @@ pub struct AudioKernelRuntime {
     /// Device reader task handles
     reader_handles: Vec<JoinHandle<Result<()>>>,
 
-    /// Hardware registry for device creation
-    registry: HardwareRegistry,
+    /// Hardware registry for device creation (shared via Arc)
+    registry: Arc<RwLock<HardwareRegistry>>,
 
     /// Hardware configuration
     hardware_config: HardwareConfig,
 }
 
 impl AudioKernelRuntime {
-    /// Create new AudioKernelRuntime
+    /// Create new AudioKernelRuntime with owned registry (for backward compatibility)
     pub fn new(registry: HardwareRegistry, hardware_config: HardwareConfig) -> Self {
+        Self::with_shared_registry(Arc::new(RwLock::new(registry)), hardware_config)
+    }
+
+    /// Create new AudioKernelRuntime with shared registry (Arc<RwLock<HardwareRegistry>>)
+    /// This is the preferred method as it allows sharing the registry between multiple components
+    pub fn with_shared_registry(
+        registry: Arc<RwLock<HardwareRegistry>>,
+        hardware_config: HardwareConfig,
+    ) -> Self {
         Self {
             active_devices: HashMap::new(),
             device_channels: HashMap::new(),
@@ -106,12 +116,15 @@ impl AudioKernelRuntime {
                 calibration: registered.calibration,
             };
 
-            // Create device from registry
-            match self.registry.create_device(
-                &registered.driver_id,
-                &registered.device_id,
-                device_config,
-            ) {
+            // Create device from registry (read lock)
+            match {
+                let registry = self.registry.read().await;
+                registry.create_device(
+                    &registered.driver_id,
+                    &registered.device_id,
+                    device_config,
+                )
+            } {
                 Ok(mut device) => {
                     // Start the device
                     device.start().await?;

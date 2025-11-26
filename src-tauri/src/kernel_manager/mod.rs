@@ -9,7 +9,7 @@ pub struct KernelManager {
     /// The wrapped kernel runtime with thread-safe access
     runtime: Arc<RwLock<Option<AudioKernelRuntime>>>,
 
-    /// Hardware registry for device creation
+    /// Hardware registry for device creation (shared with HardwareManagerState)
     registry: Arc<RwLock<HardwareRegistry>>,
 
     /// Hardware configuration
@@ -18,10 +18,11 @@ pub struct KernelManager {
 
 impl KernelManager {
     /// Create a new KernelManager with the given registry and config
-    pub fn new(registry: HardwareRegistry, config: HardwareConfig) -> Self {
+    /// Takes an Arc<RwLock<HardwareRegistry>> to allow sharing with other components
+    pub fn new(registry: Arc<RwLock<HardwareRegistry>>, config: HardwareConfig) -> Self {
         Self {
             runtime: Arc::new(RwLock::new(None)),
-            registry: Arc::new(RwLock::new(registry)),
+            registry,
             config: Arc::new(RwLock::new(config)),
         }
     }
@@ -37,27 +38,15 @@ impl KernelManager {
             }
         }
 
-        // Create new kernel runtime
-        // We need to clone the registry and config - acquire read locks and copy
-        let registry_clone = {
-            let _registry_guard = self.registry.read().await;
-            // HardwareRegistry doesn't implement Clone, so we need a new instance
-            // For now, we'll create a new registry and would need to re-register drivers
-            // This is a limitation - in production, we'd need HardwareRegistry to be Clone
-            // or use Arc<HardwareRegistry> directly
-            let mut new_registry = HardwareRegistry::new();
-            // Register the audio driver
-            new_registry.register(audiotab::hal::AudioDriver::new());
-            new_registry
-        };
-
+        // Create new kernel runtime with shared registry
         let config_clone = {
             let config_guard = self.config.read().await;
             config_guard.clone()
         };
 
-        let mut new_runtime = AudioKernelRuntime::new(
-            registry_clone,
+        // Use the shared registry directly via Arc clone
+        let mut new_runtime = AudioKernelRuntime::with_shared_registry(
+            Arc::clone(&self.registry),
             config_clone,
         );
 
@@ -130,6 +119,20 @@ impl Clone for KernelManager {
     }
 }
 
+// Manually implement Send + Sync for KernelManager
+// AudioKernelRuntime is Send because it contains Send types
+// The RwLock<Option<AudioKernelRuntime>> is Send but not necessarily Sync automatically
+// However, since we never expose &AudioKernelRuntime directly and always go through RwLock,
+// we can safely implement Sync
+//
+// This is safe because:
+// 1. All access to runtime goes through RwLock which provides synchronization
+// 2. HardwareRegistry is Send + Sync
+// 3. HardwareConfig is Send + Sync
+// 4. Arc<T> is Send + Sync if T is Send + Sync
+unsafe impl Send for KernelManager {}
+unsafe impl Sync for KernelManager {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,7 +147,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_kernel_manager_new() {
-        let registry = HardwareRegistry::new();
+        let registry = Arc::new(RwLock::new(HardwareRegistry::new()));
         let config = create_test_hardware_config();
 
         let manager = KernelManager::new(registry, config);
@@ -155,7 +158,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_kernel_manager_status_stopped_by_default() {
-        let registry = HardwareRegistry::new();
+        let registry = Arc::new(RwLock::new(HardwareRegistry::new()));
         let config = create_test_hardware_config();
         let manager = KernelManager::new(registry, config);
 
@@ -164,8 +167,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_kernel_manager_prevent_double_start() {
-        let mut registry = HardwareRegistry::new();
-        registry.register(audiotab::hal::AudioDriver::new());
+        let registry = Arc::new(RwLock::new({
+            let mut r = HardwareRegistry::new();
+            r.register(audiotab::hal::AudioDriver::new());
+            r
+        }));
 
         let config = create_test_hardware_config();
         let manager = KernelManager::new(registry, config);
@@ -185,7 +191,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_kernel_manager_stop_when_not_running() {
-        let registry = HardwareRegistry::new();
+        let registry = Arc::new(RwLock::new(HardwareRegistry::new()));
         let config = create_test_hardware_config();
         let manager = KernelManager::new(registry, config);
 
@@ -196,7 +202,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_kernel_manager_active_device_count_when_stopped() {
-        let registry = HardwareRegistry::new();
+        let registry = Arc::new(RwLock::new(HardwareRegistry::new()));
         let config = create_test_hardware_config();
         let manager = KernelManager::new(registry, config);
 
@@ -205,7 +211,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_kernel_manager_update_config_when_stopped() {
-        let registry = HardwareRegistry::new();
+        let registry = Arc::new(RwLock::new(HardwareRegistry::new()));
         let config = create_test_hardware_config();
         let manager = KernelManager::new(registry, config);
 
@@ -220,8 +226,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_kernel_manager_cannot_update_config_when_running() {
-        let mut registry = HardwareRegistry::new();
-        registry.register(audiotab::hal::AudioDriver::new());
+        let registry = Arc::new(RwLock::new({
+            let mut r = HardwareRegistry::new();
+            r.register(audiotab::hal::AudioDriver::new());
+            r
+        }));
 
         // Create config with an enabled device
         let hw = RegisteredHardware {
@@ -271,7 +280,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_kernel_manager_clone() {
-        let registry = HardwareRegistry::new();
+        let registry = Arc::new(RwLock::new(HardwareRegistry::new()));
         let config = create_test_hardware_config();
         let manager = KernelManager::new(registry, config);
 
@@ -283,8 +292,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_kernel_manager_start_stop_lifecycle() {
-        let mut registry = HardwareRegistry::new();
-        registry.register(audiotab::hal::AudioDriver::new());
+        let registry = Arc::new(RwLock::new({
+            let mut r = HardwareRegistry::new();
+            r.register(audiotab::hal::AudioDriver::new());
+            r
+        }));
 
         let config = create_test_hardware_config();
         let manager = KernelManager::new(registry, config);
