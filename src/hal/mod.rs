@@ -4,6 +4,7 @@ pub mod registry;
 pub mod drivers;
 pub mod channel_mapper;
 pub mod registered;
+pub mod format_converter;
 
 pub use traits::{HardwareDriver, Device};
 pub use types::{
