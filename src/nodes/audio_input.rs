@@ -122,12 +122,27 @@ impl ProcessingNode for AudioInputNode {
             // Use try_recv to avoid blocking (non-blocking receive)
             match channels.filled_rx.try_recv() {
                 Ok(packet) => {
+                    // Get packet format information for error context
+                    let format_name = match &packet.data {
+                        crate::hal::types::SampleData::I16(_) => "I16",
+                        crate::hal::types::SampleData::I24(_) => "I24",
+                        crate::hal::types::SampleData::I32(_) => "I32",
+                        crate::hal::types::SampleData::F32(_) => "F32",
+                        crate::hal::types::SampleData::F64(_) => "F64",
+                        crate::hal::types::SampleData::U8(_) => "U8",
+                        crate::hal::types::SampleData::Bytes(_) => "Bytes",
+                    };
+                    let num_channels = packet.num_channels;
+
                     // Convert PacketBuffer to DataFrame
-                    let mut frame = packet_to_frame(&packet, self.sequence)?;
+                    let frame = packet_to_frame(&packet, self.sequence)
+                        .map_err(|e| anyhow::anyhow!(
+                            "Failed to convert packet to frame (format: {}, channels: {}): {}",
+                            format_name, num_channels, e
+                        ))?;
 
                     // Increment sequence for next frame
                     self.sequence += 1;
-                    frame.sequence_id = self.sequence;
 
                     // Write to ring buffer for visualization if available
                     if let Some(ref rb) = self.ring_buffer {
@@ -140,7 +155,9 @@ impl ProcessingNode for AudioInputNode {
                                 }
                             }
                             if !channels_data.is_empty() {
-                                let _ = writer.write(&channels_data);
+                                if let Err(e) = writer.write(&channels_data) {
+                                    eprintln!("Ring buffer write failed: {}", e);
+                                }
                             }
                         }
                     }
