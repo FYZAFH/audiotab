@@ -55,7 +55,6 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       const shouldSaveHistory = changes.some((change) =>
         change.type === 'add' ||
         change.type === 'remove' ||
-        change.type === 'reset' ||
         (change.type === 'position' && change.dragging === false)
       );
 
@@ -74,8 +73,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       // Only save history for meaningful changes (not for selection changes)
       const shouldSaveHistory = changes.some((change) =>
         change.type === 'add' ||
-        change.type === 'remove' ||
-        change.type === 'reset'
+        change.type === 'remove'
       );
 
       if (shouldSaveHistory) {

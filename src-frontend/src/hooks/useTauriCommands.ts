@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import type { NodeMetadata, GraphJson, PipelineStatus, PipelineAction } from '../types/nodes';
+import type { KernelStatusResponse } from '../types/kernel';
 
 export function useNodeRegistry() {
   return useQuery({
@@ -26,5 +27,27 @@ export function useControlPipeline() {
   return useMutation({
     mutationFn: ({ id, action }: { id: string; action: PipelineAction }) =>
       invoke<void>('control_pipeline', { id, action }),
+  });
+}
+
+// Kernel management hooks
+
+export function useKernelStatus() {
+  return useQuery({
+    queryKey: ['kernel-status'],
+    queryFn: () => invoke<KernelStatusResponse>('get_kernel_status'),
+    refetchInterval: 2000, // Poll every 2 seconds
+  });
+}
+
+export function useStartKernel() {
+  return useMutation({
+    mutationFn: () => invoke<KernelStatusResponse>('start_kernel'),
+  });
+}
+
+export function useStopKernel() {
+  return useMutation({
+    mutationFn: () => invoke<KernelStatusResponse>('stop_kernel'),
   });
 }
