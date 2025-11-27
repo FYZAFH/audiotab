@@ -65,6 +65,9 @@ fn map_node_type(frontend_type: &str) -> &str {
         "Print" => "DebugSinkNode",
         "FFT" => "FFTNode",
         "Filter" => "FilterNode",
+        "AudioInput" => "AudioInputNode",
+        "AudioOutput" => "AudioOutputNode",
+        "TriggerSource" => "TriggerSourceNode",
         _ => frontend_type, // Pass through if unknown
     }
 }
@@ -111,6 +114,15 @@ mod tests {
         // - pipeline_config with defaults
         assert!(result["nodes"].is_array());
         assert_eq!(result["nodes"].as_array().unwrap().len(), 2);
+
+        // Verify node type mapping worked
+        assert_eq!(result["nodes"][0]["type"], "AudioSourceNode");
+
+        // Verify parameters correctly copied
+        assert_eq!(result["nodes"][0]["config"]["frequency"], 440);
+
+        // Verify second node type mapped
+        assert_eq!(result["nodes"][1]["type"], "GainNode");
 
         assert!(result["connections"].is_array());
         assert_eq!(result["connections"].as_array().unwrap().len(), 1);
