@@ -256,4 +256,20 @@ impl AsyncPipeline {
     pub fn get_monitor(&self) -> Option<PipelineMonitor> {
         self.metrics_collector.as_ref().map(|c| PipelineMonitor::new(c.clone()))
     }
+
+    /// Get the current state of the pipeline
+    pub fn get_state(&self) -> &PipelineState {
+        &self.state
+    }
+
+    /// Subscribe to pipeline errors
+    /// Returns a receiver that emits error messages
+    ///
+    /// TODO: Error subscription not yet implemented
+    /// This will require adding a broadcast channel to AsyncPipeline
+    /// For now, errors are propagated through the ResilientNode wrapper
+    /// and can be monitored via the metrics collector
+    pub fn subscribe_errors(&self) -> Result<tokio::sync::broadcast::Receiver<String>> {
+        Err(anyhow!("Error subscription not yet implemented. Use metrics collector for error monitoring."))
+    }
 }
