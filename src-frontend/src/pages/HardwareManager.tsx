@@ -1,4 +1,3 @@
-import React from 'react';
 import { HardwareConfig } from '../components/HardwareConfig';
 
 export function HardwareManager() {

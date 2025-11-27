@@ -1,92 +1,140 @@
-import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import FlowEditor from './components/FlowEditor/FlowEditor';
-import NodePalette from './components/NodePalette/NodePalette';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './components/ui/button';
-import { useFlowStore } from './stores/flowStore';
-import { useDeployGraph } from './hooks/useTauriCommands';
-import { usePipelineStatusEvents } from './hooks/useTauriEvents';
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from './components/ui/dropdown-menu';
+import { Home } from './pages/Home';
 import { VisualizationDemo } from './pages/VisualizationDemo';
 import { HardwareManager } from './pages/HardwareManager';
+import { ProcessConfiguration } from './pages/ProcessConfiguration';
+import { HomeIcon, ChevronDown } from 'lucide-react';
 
 const queryClient = new QueryClient();
 
-function AppContent() {
-  useKeyboardShortcuts();
-  const [lastStatus, setLastStatus] = useState<string>('');
-  const [showVizDemo, setShowVizDemo] = useState<boolean>(false);
-  const [showHardware, setShowHardware] = useState<boolean>(false);
-  const exportGraph = useFlowStore((state) => state.exportGraph);
-  const undo = useFlowStore((state) => state.undo);
-  const redo = useFlowStore((state) => state.redo);
-  const canUndo = useFlowStore((state) => state.canUndo());
-  const canRedo = useFlowStore((state) => state.canRedo());
-  const deployMutation = useDeployGraph();
+function NavigationBar() {
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  usePipelineStatusEvents((event) => {
-    setLastStatus(`Pipeline ${event.id}: ${event.state}`);
-  });
-
-  const handleDeploy = async () => {
-    const graph = exportGraph();
-    try {
-      const pipelineId = await deployMutation.mutateAsync(graph);
-      console.log('Deployed pipeline:', pipelineId);
-    } catch (error) {
-      console.error('Deploy failed:', error);
-    }
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
   };
 
+  const isConfigureActive = isActive('/configure');
+  const isViewActive = isActive('/view');
+
+  return (
+    <div className="h-14 bg-slate-800 border-b border-slate-700 flex items-center px-4">
+      <h1 className="text-white text-xl font-bold mr-8">StreamLab Core</h1>
+
+      {/* Navigation Menubar */}
+      <nav className="flex gap-1 flex-1">
+        {/* Home */}
+        <Link to="/">
+          <Button
+            variant={isActive('/') && !isConfigureActive && !isViewActive ? 'default' : 'ghost'}
+            size="sm"
+            className="gap-2"
+          >
+            <HomeIcon className="h-4 w-4" />
+            Home
+          </Button>
+        </Link>
+
+        {/* Configure Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={isConfigureActive ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1"
+            >
+              Configure
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => navigate('/configure/process')}>
+              Process Configuration
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/configure/hardware')}>
+              Hardware Manager
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* View Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={isViewActive ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1"
+            >
+              View
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => navigate('/view/visualization')}>
+              Visualization Demo
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Help Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1"
+            >
+              Help
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => window.open('https://github.com/your-repo/audiotab', '_blank')}>
+              Documentation
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => window.open('https://github.com/your-repo/audiotab/issues', '_blank')}>
+              Report Issue
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => alert('StreamLab Core v0.1.0')}>
+              About
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </nav>
+    </div>
+  );
+}
+
+function AppContent() {
   return (
     <div className="flex flex-col h-screen bg-slate-900">
-      {/* Top Bar */}
-      <div className="h-14 bg-slate-800 border-b border-slate-700 flex items-center px-4">
-        <h1 className="text-white text-xl font-bold">StreamLab Core</h1>
-        <div className="ml-auto space-x-2">
-          <Button onClick={() => setShowVizDemo(!showVizDemo)} variant="outline">
-            {showVizDemo ? 'Editor' : 'Viz Demo'}
-          </Button>
-          <Button onClick={() => setShowHardware(!showHardware)} variant="outline">
-            {showHardware ? 'Editor' : 'Hardware'}
-          </Button>
-          {!showVizDemo && !showHardware && (
-            <>
-              <Button onClick={undo} disabled={!canUndo} variant="outline">
-                Undo
-              </Button>
-              <Button onClick={redo} disabled={!canRedo} variant="outline">
-                Redo
-              </Button>
-              <Button onClick={handleDeploy} disabled={deployMutation.isPending}>
-                {deployMutation.isPending ? 'Deploying...' : 'Deploy'}
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <NavigationBar />
 
-      {/* Main Content */}
-      {showVizDemo ? (
-        <div className="flex-1 overflow-auto">
-          <VisualizationDemo />
-        </div>
-      ) : showHardware ? (
-        <div className="flex-1 overflow-auto">
-          <HardwareManager />
-        </div>
-      ) : (
-        <div className="flex flex-1 overflow-hidden">
-          <NodePalette />
-          <div className="flex-1">
-            <FlowEditor />
-          </div>
-        </div>
-      )}
-
-      {/* Status Bar */}
-      <div className="h-8 bg-slate-800 border-t border-slate-700 flex items-center px-4">
-        <span className="text-slate-400 text-sm">{lastStatus || 'Ready'}</span>
+      <div className="flex-1 overflow-hidden">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/configure/process" element={<ProcessConfiguration />} />
+          <Route path="/configure/hardware" element={<HardwareManager />} />
+          <Route path="/view/visualization" element={<VisualizationDemo />} />
+          {/* Legacy routes for backward compatibility */}
+          <Route path="/editor" element={<ProcessConfiguration />} />
+          <Route path="/hardware" element={<HardwareManager />} />
+          <Route path="/viz-demo" element={<VisualizationDemo />} />
+        </Routes>
       </div>
     </div>
   );
@@ -95,7 +143,9 @@ function AppContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }

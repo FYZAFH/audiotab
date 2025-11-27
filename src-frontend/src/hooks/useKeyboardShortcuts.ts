@@ -1,8 +1,12 @@
 import { useEffect } from 'react';
 import { useFlowStore } from '../stores/flowStore';
 
-export function useKeyboardShortcuts() {
+export function useKeyboardShortcuts(enabled: boolean = true) {
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       // Undo: Ctrl+Z / Cmd+Z
       if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
@@ -25,5 +29,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [enabled]);
 }
