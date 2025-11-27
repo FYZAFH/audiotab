@@ -5,6 +5,9 @@ mod graph;
 pub mod hardware_manager;
 pub mod kernel_manager;
 
+// Export translator for integration tests
+pub use graph::translate_graph;
+
 use state::AppState;
 use hardware_manager::{
     HardwareManagerState,
