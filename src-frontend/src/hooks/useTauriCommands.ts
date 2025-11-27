@@ -12,7 +12,20 @@ export function useNodeRegistry() {
 
 export function useDeployGraph() {
   return useMutation({
-    mutationFn: (graph: GraphJson) => invoke<string>('deploy_graph', { graph }),
+    mutationFn: async (graph: GraphJson) => {
+      try {
+        const result = await invoke<string>('deploy_graph', { graph });
+        return result;
+      } catch (error) {
+        // Extract error message from Tauri error
+        const errorMessage = error instanceof Error
+          ? error.message
+          : String(error);
+
+        console.error('[useDeployGraph] Deployment failed:', errorMessage);
+        throw new Error(errorMessage);
+      }
+    },
   });
 }
 

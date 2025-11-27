@@ -39,8 +39,19 @@ export function ProcessConfiguration() {
       console.log('Deployed pipeline:', pipelineId);
       setLastStatus(`Successfully deployed pipeline: ${pipelineId}`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Deploy failed:', error);
-      setLastStatus(`Deploy failed: ${error}`);
+
+      // Show user-friendly error
+      if (errorMessage.includes('Graph translation failed')) {
+        setLastStatus('❌ Invalid graph structure. Please check node connections.');
+      } else if (errorMessage.includes('Pipeline creation failed')) {
+        setLastStatus('❌ Failed to create pipeline. Check node configurations.');
+      } else if (errorMessage.includes('Unknown node type')) {
+        setLastStatus('❌ Unknown node type. This node may not be registered.');
+      } else {
+        setLastStatus(`❌ Deploy failed: ${errorMessage}`);
+      }
     }
   };
 
@@ -127,9 +138,7 @@ export function ProcessConfiguration() {
       <div className="flex flex-1 overflow-hidden">
         {canEdit && <NodePalette />}
         <div className="flex-1 relative">
-          <div className={!canEdit ? 'pointer-events-none' : ''}>
-            <FlowEditor />
-          </div>
+          <FlowEditor />
           {/* Overlay when not in edit mode */}
           {!canEdit && (
             <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center pointer-events-none">
@@ -151,7 +160,13 @@ export function ProcessConfiguration() {
 
       {/* Status Bar */}
       <div className="h-8 bg-slate-800 border-t border-slate-700 flex items-center px-4">
-        <span className="text-slate-400 text-sm">
+        <span className={`text-sm ${
+          lastStatus.startsWith('❌')
+            ? 'text-red-400'
+            : lastStatus.startsWith('Successfully')
+              ? 'text-green-400'
+              : 'text-slate-400'
+        }`}>
           {lastStatus || (canEdit ? 'Edit mode enabled - Ready to configure' : 'View only mode')}
         </span>
       </div>
