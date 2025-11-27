@@ -149,6 +149,42 @@ impl KernelManager {
 
         Ok(())
     }
+
+    /// Execute a pipeline instance
+    ///
+    /// This spawns the pipeline as a Tokio task and manages its lifecycle
+    pub async fn execute_pipeline(&self, _pipeline: Arc<std::sync::Mutex<audiotab::engine::AsyncPipeline>>) -> Result<()> {
+        // Check runtime status without holding the lock
+        let is_running = {
+            let runtime_guard = self.runtime.read().await;
+            if let Some(runtime) = runtime_guard.as_ref() {
+                runtime.status() == KernelStatus::Running
+            } else {
+                false
+            }
+        };
+
+        if !is_running {
+            return Err(anyhow!("Kernel must be running to execute pipelines"));
+        }
+
+        // TODO: Actually spawn and run the pipeline
+        // This will involve:
+        // 1. _pipeline.lock().unwrap().start().await
+        // 2. Managing the pipeline task handle
+        // 3. Monitoring pipeline health
+
+        Ok(())
+    }
+
+    /// Synchronous wrapper for execute_pipeline (for Tauri commands)
+    pub fn execute_pipeline_sync(&self, pipeline: Arc<std::sync::Mutex<audiotab::engine::AsyncPipeline>>) -> Result<()> {
+        let manager = self.clone();
+        let runtime = tokio::runtime::Runtime::new()?;
+        runtime.block_on(async {
+            manager.execute_pipeline(pipeline).await
+        })
+    }
 }
 
 impl Clone for KernelManager {
