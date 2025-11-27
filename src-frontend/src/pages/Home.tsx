@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useKernelStatus, useStartKernel, useStopKernel } from '../hooks/useTauriCommands';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
@@ -9,25 +8,6 @@ export function Home() {
   const { data: kernelStatus, isError, error } = useKernelStatus();
   const startKernel = useStartKernel();
   const stopKernel = useStopKernel();
-
-  // Handle kernel start/stop responses
-  useEffect(() => {
-    if (startKernel.isSuccess) {
-      console.log('Kernel started successfully:', startKernel.data);
-    }
-    if (startKernel.isError) {
-      console.error('Failed to start kernel:', startKernel.error);
-    }
-  }, [startKernel.isSuccess, startKernel.isError, startKernel.data, startKernel.error]);
-
-  useEffect(() => {
-    if (stopKernel.isSuccess) {
-      console.log('Kernel stopped successfully:', stopKernel.data);
-    }
-    if (stopKernel.isError) {
-      console.error('Failed to stop kernel:', stopKernel.error);
-    }
-  }, [stopKernel.isSuccess, stopKernel.isError, stopKernel.data, stopKernel.error]);
 
   const handleStartKernel = async () => {
     try {
@@ -174,11 +154,11 @@ export function Home() {
                 <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="text-red-500 font-semibold mb-1">Error</h3>
-                  <p className="text-red-400 text-sm">
-                    {isError && `Failed to fetch kernel status: ${error?.message || 'Unknown error'}`}
-                    {startKernel.isError && `Failed to start kernel: ${startKernel.error?.message || 'Unknown error'}`}
-                    {stopKernel.isError && `Failed to stop kernel: ${stopKernel.error?.message || 'Unknown error'}`}
-                  </p>
+                  <div className="text-red-400 text-sm space-y-1">
+                    {isError && <p>Failed to fetch kernel status: {error?.message || 'Unknown error'}</p>}
+                    {startKernel.isError && <p>Failed to start kernel: {startKernel.error?.message || 'Unknown error'}</p>}
+                    {stopKernel.isError && <p>Failed to stop kernel: {stopKernel.error?.message || 'Unknown error'}</p>}
+                  </div>
                 </div>
               </div>
             </div>
