@@ -13,8 +13,8 @@ pub struct AppState {
 
 pub struct PipelineHandle {
     pub id: String,
-    pub pipeline: AsyncPipeline,
-    pub state: PipelineState,
+    pub pipeline: Arc<Mutex<AsyncPipeline>>,
+    pub state: Arc<Mutex<PipelineState>>,
 }
 
 pub struct NodeRegistry {
