@@ -1,6 +1,7 @@
 mod state;
 mod commands;
 mod nodes;
+mod graph;
 pub mod hardware_manager;
 pub mod kernel_manager;
 
