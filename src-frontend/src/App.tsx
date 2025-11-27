@@ -53,7 +53,6 @@ function NavigationBar() {
               variant={isConfigureActive ? 'default' : 'ghost'}
               size="sm"
               className="gap-1"
-              data-dropdown-trigger
             >
               Configure
               <ChevronDown className="h-4 w-4" />
@@ -77,7 +76,6 @@ function NavigationBar() {
               variant={isViewActive ? 'default' : 'ghost'}
               size="sm"
               className="gap-1"
-              data-dropdown-trigger
             >
               View
               <ChevronDown className="h-4 w-4" />
@@ -97,7 +95,6 @@ function NavigationBar() {
               variant="ghost"
               size="sm"
               className="gap-1"
-              data-dropdown-trigger
             >
               Help
               <ChevronDown className="h-4 w-4" />

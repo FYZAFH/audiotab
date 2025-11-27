@@ -10,7 +10,6 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { AlertCircle, Lock, Unlock } from 'lucide-react';
 
 export function ProcessConfiguration() {
-  useKeyboardShortcuts();
   const [lastStatus, setLastStatus] = useState<string>('');
   const [editMode, setEditMode] = useState(false);
 
@@ -29,6 +28,9 @@ export function ProcessConfiguration() {
 
   const isKernelRunning = kernelStatus?.status === 'Running' || kernelStatus?.status === 'Initializing';
   const canEdit = editMode && !isKernelRunning;
+
+  // Enable keyboard shortcuts only when in edit mode
+  useKeyboardShortcuts(canEdit);
 
   const handleDeploy = async () => {
     const graph = exportGraph();
@@ -123,9 +125,11 @@ export function ProcessConfiguration() {
 
       {/* Editor Content */}
       <div className="flex flex-1 overflow-hidden">
-        <NodePalette />
+        {canEdit && <NodePalette />}
         <div className="flex-1 relative">
-          <FlowEditor />
+          <div className={!canEdit ? 'pointer-events-none' : ''}>
+            <FlowEditor />
+          </div>
           {/* Overlay when not in edit mode */}
           {!canEdit && (
             <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center pointer-events-none">

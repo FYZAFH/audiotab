@@ -73,6 +73,8 @@ const DropdownMenuTrigger = React.forwardRef<
           existingOnClick(e);
         }
       },
+      'data-dropdown-trigger': true,
+      ref,
     });
   }
 
@@ -80,6 +82,7 @@ const DropdownMenuTrigger = React.forwardRef<
     <button
       ref={ref}
       onClick={handleClick}
+      data-dropdown-trigger
       className={cn(
         "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
         "hover:bg-slate-700 hover:text-white",
