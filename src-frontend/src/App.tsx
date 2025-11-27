@@ -1,34 +1,43 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from './components/ui/dropdown-menu';
 import { Home } from './pages/Home';
 import { VisualizationDemo } from './pages/VisualizationDemo';
 import { HardwareManager } from './pages/HardwareManager';
-import FlowEditor from './components/FlowEditor/FlowEditor';
-import NodePalette from './components/NodePalette/NodePalette';
-import { useFlowStore } from './stores/flowStore';
-import { useDeployGraph } from './hooks/useTauriCommands';
-import { usePipelineStatusEvents } from './hooks/useTauriEvents';
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { useState } from 'react';
-import { HomeIcon, Activity, Cpu, Workflow } from 'lucide-react';
+import { ProcessConfiguration } from './pages/ProcessConfiguration';
+import { HomeIcon, ChevronDown } from 'lucide-react';
 
 const queryClient = new QueryClient();
 
 function NavigationBar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
+  const isConfigureActive = isActive('/configure');
+  const isViewActive = isActive('/view');
 
   return (
     <div className="h-14 bg-slate-800 border-b border-slate-700 flex items-center px-4">
       <h1 className="text-white text-xl font-bold mr-8">StreamLab Core</h1>
 
-      {/* Navigation Links */}
-      <nav className="flex gap-2 flex-1">
+      {/* Navigation Menubar */}
+      <nav className="flex gap-1 flex-1">
+        {/* Home */}
         <Link to="/">
           <Button
-            variant={isActive('/') ? 'default' : 'outline'}
+            variant={isActive('/') && !isConfigureActive && !isViewActive ? 'default' : 'ghost'}
             size="sm"
             className="gap-2"
           >
@@ -36,93 +45,79 @@ function NavigationBar() {
             Home
           </Button>
         </Link>
-        <Link to="/editor">
-          <Button
-            variant={isActive('/editor') ? 'default' : 'outline'}
-            size="sm"
-            className="gap-2"
-          >
-            <Workflow className="h-4 w-4" />
-            Flow Editor
-          </Button>
-        </Link>
-        <Link to="/hardware">
-          <Button
-            variant={isActive('/hardware') ? 'default' : 'outline'}
-            size="sm"
-            className="gap-2"
-          >
-            <Cpu className="h-4 w-4" />
-            Hardware
-          </Button>
-        </Link>
-        <Link to="/viz-demo">
-          <Button
-            variant={isActive('/viz-demo') ? 'default' : 'outline'}
-            size="sm"
-            className="gap-2"
-          >
-            <Activity className="h-4 w-4" />
-            Viz Demo
-          </Button>
-        </Link>
+
+        {/* Configure Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={isConfigureActive ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1"
+              data-dropdown-trigger
+            >
+              Configure
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => navigate('/configure/process')}>
+              Process Configuration
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/configure/hardware')}>
+              Hardware Manager
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* View Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={isViewActive ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1"
+              data-dropdown-trigger
+            >
+              View
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => navigate('/view/visualization')}>
+              Visualization Demo
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Help Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1"
+              data-dropdown-trigger
+            >
+              Help
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => window.open('https://github.com/your-repo/audiotab', '_blank')}>
+              Documentation
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => window.open('https://github.com/your-repo/audiotab/issues', '_blank')}>
+              Report Issue
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => alert('StreamLab Core v0.1.0')}>
+              About
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </nav>
-    </div>
-  );
-}
-
-function EditorPage() {
-  useKeyboardShortcuts();
-  const [lastStatus, setLastStatus] = useState<string>('');
-  const exportGraph = useFlowStore((state) => state.exportGraph);
-  const undo = useFlowStore((state) => state.undo);
-  const redo = useFlowStore((state) => state.redo);
-  const canUndo = useFlowStore((state) => state.canUndo());
-  const canRedo = useFlowStore((state) => state.canRedo());
-  const deployMutation = useDeployGraph();
-
-  usePipelineStatusEvents((event) => {
-    setLastStatus(`Pipeline ${event.id}: ${event.state}`);
-  });
-
-  const handleDeploy = async () => {
-    const graph = exportGraph();
-    try {
-      const pipelineId = await deployMutation.mutateAsync(graph);
-      console.log('Deployed pipeline:', pipelineId);
-    } catch (error) {
-      console.error('Deploy failed:', error);
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Editor Toolbar */}
-      <div className="h-12 bg-slate-800 border-b border-slate-700 flex items-center px-4 gap-2">
-        <Button onClick={undo} disabled={!canUndo} variant="outline" size="sm">
-          Undo
-        </Button>
-        <Button onClick={redo} disabled={!canRedo} variant="outline" size="sm">
-          Redo
-        </Button>
-        <div className="flex-1" />
-        <Button onClick={handleDeploy} disabled={deployMutation.isPending} size="sm">
-          {deployMutation.isPending ? 'Deploying...' : 'Deploy'}
-        </Button>
-      </div>
-
-      {/* Editor Content */}
-      <div className="flex flex-1 overflow-hidden">
-        <NodePalette />
-        <div className="flex-1">
-          <FlowEditor />
-        </div>
-      </div>
-
-      {/* Status Bar */}
-      <div className="h-8 bg-slate-800 border-t border-slate-700 flex items-center px-4">
-        <span className="text-slate-400 text-sm">{lastStatus || 'Ready'}</span>
-      </div>
     </div>
   );
 }
@@ -135,7 +130,11 @@ function AppContent() {
       <div className="flex-1 overflow-hidden">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/editor" element={<EditorPage />} />
+          <Route path="/configure/process" element={<ProcessConfiguration />} />
+          <Route path="/configure/hardware" element={<HardwareManager />} />
+          <Route path="/view/visualization" element={<VisualizationDemo />} />
+          {/* Legacy routes for backward compatibility */}
+          <Route path="/editor" element={<ProcessConfiguration />} />
           <Route path="/hardware" element={<HardwareManager />} />
           <Route path="/viz-demo" element={<VisualizationDemo />} />
         </Routes>
