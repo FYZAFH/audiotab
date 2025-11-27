@@ -1,13 +1,16 @@
 import { useKernelStatus, useStartKernel, useStopKernel } from '../hooks/useTauriCommands';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
+import { VisualizationDock } from '../components/VisualizationDock';
 import { AlertCircle, CheckCircle, Loader2, StopCircle, Play, Square } from 'lucide-react';
 import type { KernelStatus } from '../types/kernel';
+import { useState } from 'react';
 
 export function Home() {
   const { data: kernelStatus, isError, error } = useKernelStatus();
   const startKernel = useStartKernel();
   const stopKernel = useStopKernel();
+  const [activeVisualizations, setActiveVisualizations] = useState(0);
 
   const handleStartKernel = async () => {
     try {
@@ -168,12 +171,7 @@ export function Home() {
         {/* Visualization Panel Docking Area */}
         <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
           <h2 className="text-2xl font-semibold text-white mb-4">Visualization Panels</h2>
-          <div className="min-h-[300px] border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-slate-400 mb-2">Visualization docking area</p>
-              <p className="text-slate-500 text-sm">This feature will be implemented in Phase 5</p>
-            </div>
-          </div>
+          <VisualizationDock onPanelCountChange={setActiveVisualizations} />
         </div>
 
         {/* Quick Stats */}
@@ -192,7 +190,7 @@ export function Home() {
 
           <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
             <p className="text-slate-400 text-sm mb-1">Active Visualizations</p>
-            <p className="text-2xl font-semibold text-white">0</p>
+            <p className="text-2xl font-semibold text-white">{activeVisualizations}</p>
           </div>
         </div>
       </div>
