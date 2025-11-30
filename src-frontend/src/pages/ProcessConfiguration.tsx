@@ -3,6 +3,7 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import FlowEditor from '../components/FlowEditor/FlowEditor';
 import NodePalette from '../components/NodePalette/NodePalette';
+import { NodePropertiesPanel } from '../components/NodePropertiesPanel';
 import { useFlowStore } from '../stores/flowStore';
 import { useDeployGraph, useKernelStatus } from '../hooks/useTauriCommands';
 import { usePipelineStatusEvents } from '../hooks/useTauriEvents';
@@ -156,6 +157,8 @@ export function ProcessConfiguration() {
             </div>
           )}
         </div>
+        {/* Properties Panel - only show in edit mode */}
+        {canEdit && <NodePropertiesPanel />}
       </div>
 
       {/* Status Bar */}
