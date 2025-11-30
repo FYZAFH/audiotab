@@ -131,6 +131,14 @@ impl AudioSourceNode {
     pub fn set_ring_buffer(&mut self, ring_buffer: Option<Arc<Mutex<RingBufferWriter>>>) {
         self.ring_buffer = ring_buffer;
     }
+
+    /// Set device channels for hardware streaming
+    ///
+    /// # Arguments
+    /// * `channels` - Optional DeviceChannels for receiving audio from hardware
+    pub fn set_device_channels(&mut self, channels: Option<DeviceChannels>) {
+        self.device_channels = channels;
+    }
 }
 
 #[async_trait]

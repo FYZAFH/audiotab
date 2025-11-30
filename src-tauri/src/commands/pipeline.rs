@@ -77,7 +77,7 @@ pub async fn deploy_graph(
     println!("Translated graph: {}", serde_json::to_string_pretty(&backend_json).unwrap());
 
     // Step 2: Create AsyncPipeline from translated graph
-    let pipeline = match AsyncPipeline::from_json(backend_json).await {
+    let mut pipeline = match AsyncPipeline::from_json(backend_json).await {
         Ok(p) => p,
         Err(e) => {
             let error_msg = format!("Pipeline creation failed: {}", e);
@@ -94,7 +94,33 @@ pub async fn deploy_graph(
         }
     };
 
-    // Step 3: Store pipeline in state
+    // Step 3: Inject RingBuffer into visualization-capable nodes
+    pipeline.set_ring_buffer(state.ring_buffer.clone());
+
+    // Step 4: Inject DeviceChannels into AudioSourceNodes with device_profile_id
+    // TODO: This is a simplified implementation. Full implementation requires:
+    // - Proper async handling of device creation/starting
+    // - Error recovery if device creation fails
+    // - Device lifecycle management
+    {
+        let _device_manager = state.device_manager.lock()
+            .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
+
+        for (_node_id, node) in pipeline.nodes.iter_mut() {
+            if let Some(audio_source) = node.as_any_mut().downcast_mut::<audiotab::nodes::AudioSourceNode>() {
+                let device_profile_id = audio_source.device_profile_id.clone();
+
+                if !device_profile_id.is_empty() {
+                    // Note: Actual device creation and channel injection would happen here
+                    // This requires async device creation which is complex in this sync context
+                    println!("Note: AudioSourceNode requests device profile '{}'", device_profile_id);
+                    println!("Full device injection implementation pending (see Task 9 notes in plan)");
+                }
+            }
+        }
+    }
+
+    // Step 5: Store pipeline in state
     let handle = PipelineHandle {
         id: pipeline_id.clone(),
         pipeline: Arc::new(Mutex::new(pipeline)),
@@ -168,15 +194,69 @@ pub fn control_pipeline(
             println!("Pipeline {} started successfully", id);
         }
         PipelineAction::Stop => {
-            // TODO: Implement pipeline stop
-            println!("Stop not yet implemented for pipeline {}", id);
+            // Stop the pipeline via async stop() method
+            let mut pipeline_guard = pipeline_arc.0.lock().unwrap();
+
+            // Call stop on the pipeline (async operation)
+            let runtime = tokio::runtime::Runtime::new()
+                .map_err(|e| format!("Failed to create runtime: {}", e))?;
+            runtime.block_on(async {
+                pipeline_guard.stop().await
+            }).map_err(|e| format!("Failed to stop pipeline: {}", e))?;
+
+            // Update state to Completed
+            *pipeline_arc.1.lock().unwrap() = PipelineState::Completed {
+                duration: None,
+                total_frames: 0,
+            };
+
+            println!("Pipeline {} stopped successfully", id);
         }
         PipelineAction::Pause => {
-            // TODO: Implement pipeline pause
+            // Pause not yet implemented in AsyncPipeline
+            // Defer to future implementation
             println!("Pause not yet implemented for pipeline {}", id);
+            return Err("Pause action not yet supported".to_string());
         }
     }
 
+    Ok(())
+}
+
+/// Trigger a pipeline to process one frame
+///
+/// Sends a trigger DataFrame to the pipeline's source node, causing it to process one frame.
+/// This is used for triggered execution mode where frames are processed on demand.
+#[tauri::command]
+pub fn trigger_pipeline(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
+    println!("Trigger pipeline {}", id);
+
+    // Get the pipeline handle
+    let pipeline_arc = {
+        let pipelines = state.pipelines.lock().unwrap();
+        let handle = pipelines.get(&id)
+            .ok_or_else(|| format!("Pipeline {} not found", id))?;
+        handle.pipeline.clone()
+    };
+
+    // Create a simple trigger DataFrame
+    // For Phase 7, this is a minimal frame just to trigger processing
+    use audiotab::core::DataFrame;
+    let trigger_frame = DataFrame::new(0, 0); // timestamp=0, sequence_id=0
+
+    // Send trigger frame to pipeline
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|e| format!("Failed to create runtime: {}", e))?;
+
+    runtime.block_on(async {
+        let pipeline = pipeline_arc.lock().unwrap();
+        pipeline.trigger(trigger_frame).await
+    }).map_err(|e| format!("Failed to trigger pipeline: {}", e))?;
+
+    println!("Pipeline {} triggered successfully", id);
     Ok(())
 }
 
