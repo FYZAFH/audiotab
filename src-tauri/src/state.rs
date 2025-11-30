@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use audiotab::engine::{AsyncPipeline, PipelineState};
 use audiotab::visualization::RingBufferWriter;
+use audiotab::hal::DeviceManager;
 use crate::nodes::*;
 
 #[derive(Clone)]
@@ -9,6 +10,7 @@ pub struct AppState {
     pub registry: Arc<NodeRegistry>,
     pub pipelines: Arc<Mutex<HashMap<String, PipelineHandle>>>,
     pub ring_buffer: Arc<Mutex<RingBufferWriter>>,
+    pub device_manager: Arc<Mutex<DeviceManager>>,
 }
 
 pub struct PipelineHandle {
@@ -106,10 +108,23 @@ impl AppState {
             30,
         ).expect("Failed to create ring buffer");
 
+        // Initialize device manager
+        let storage_dir = dirs::config_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("audiotab")
+            .join("devices");
+
+        let mut device_manager = DeviceManager::new(storage_dir)
+            .expect("Failed to create device manager");
+
+        // Register built-in drivers
+        device_manager.register_driver(audiotab::hal::AudioDriver::new());
+
         Self {
             registry: Arc::new(NodeRegistry::with_defaults()),
             pipelines: Arc::new(Mutex::new(HashMap::new())),
             ring_buffer: Arc::new(Mutex::new(ring_buffer)),
+            device_manager: Arc::new(Mutex::new(device_manager)),
         }
     }
 }
