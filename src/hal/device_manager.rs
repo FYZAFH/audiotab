@@ -99,19 +99,48 @@ impl DeviceManager {
 
     /// Start a device and track it as active
     pub async fn start_device(&self, profile_id: &str) -> Result<()> {
-        let mut device = self.create_device(profile_id)?;
-        device.start().await?;
+        let device = self.create_device(profile_id)?;
 
-        let mut active = self.active_devices.lock().unwrap();
-        active.insert(profile_id.to_string(), device);
+        // Insert device into active_devices BEFORE starting it
+        // This prevents resource leak if the function fails after device starts
+        {
+            let mut active = self.active_devices.lock()
+                .map_err(|e| anyhow::anyhow!("Failed to acquire active devices lock: {}", e))?;
+            active.insert(profile_id.to_string(), device);
+        }
+
+        // Start the device - if this fails, remove from active_devices
+        let start_result = {
+            let mut active = self.active_devices.lock()
+                .map_err(|e| anyhow::anyhow!("Failed to acquire active devices lock: {}", e))?;
+            let device = active.get_mut(profile_id)
+                .ok_or_else(|| anyhow::anyhow!("Device disappeared from active devices"))?;
+            device.start().await
+        };
+
+        if let Err(e) = start_result {
+            // Remove from active_devices on failure
+            let mut active = self.active_devices.lock()
+                .map_err(|e| anyhow::anyhow!("Failed to acquire active devices lock: {}", e))?;
+            active.remove(profile_id);
+            return Err(e);
+        }
+
         Ok(())
     }
 
     /// Stop an active device
     pub async fn stop_device(&self, profile_id: &str) -> Result<()> {
-        let mut active = self.active_devices.lock().unwrap();
+        // Remove device from HashMap BEFORE calling stop()
+        // This releases the lock before the async operation
+        let mut device = {
+            let mut active = self.active_devices.lock()
+                .map_err(|e| anyhow::anyhow!("Failed to acquire active devices lock: {}", e))?;
+            active.remove(profile_id)
+        };
 
-        if let Some(mut device) = active.remove(profile_id) {
+        // Call stop() outside the lock
+        if let Some(ref mut device) = device {
             device.stop().await?;
         }
 
@@ -120,8 +149,9 @@ impl DeviceManager {
 
     /// Check if a device is currently active
     pub fn is_device_active(&self, profile_id: &str) -> bool {
-        let active = self.active_devices.lock().unwrap();
-        active.contains_key(profile_id)
+        self.active_devices.lock()
+            .map(|active| active.contains_key(profile_id))
+            .unwrap_or(false)
     }
 }
 
