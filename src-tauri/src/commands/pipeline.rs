@@ -98,6 +98,8 @@ pub async fn deploy_graph(
     pipeline.set_ring_buffer(state.ring_buffer.clone());
 
     // Step 4: Inject DeviceChannels into AudioSourceNodes with device_profile_id
+    let mut started_devices = Vec::new(); // Track successfully started devices
+
     let device_injection_results: Vec<Result<(), String>> = {
         let mut results = Vec::new();
 
@@ -112,10 +114,10 @@ pub async fn deploy_graph(
 
                     // Async device creation and channel injection
                     let manager_arc = state.device_manager.clone();
-                    let device_id_clone = device_profile_id.clone();
+                    let device_id_for_closure = device_profile_id.clone();
 
                     let result = tokio::task::spawn_blocking(move || {
-                        let mut manager = manager_arc.lock()
+                        let manager = manager_arc.lock()
                             .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
 
                         // Create runtime for async start_device
@@ -123,27 +125,37 @@ pub async fn deploy_graph(
                             .map_err(|e| format!("Failed to create runtime: {}", e))?;
 
                         runtime.block_on(async {
-                            manager.start_device(&device_id_clone).await
-                                .map_err(|e| format!("Failed to start device '{}': {}", device_id_clone, e))
+                            manager.start_device(&device_id_for_closure).await
+                                .map_err(|e| format!("Failed to start device '{}': {}", device_id_for_closure, e))
                         })
                     })
                     .await
                     .map_err(|e| format!("Device creation task failed: {}", e))?;
 
-                    results.push(result.map(|_| ()));
+                    match result {
+                        Ok(_) => {
+                            started_devices.push(device_profile_id.clone());
 
-                    // Get device channels
-                    let channels = {
-                        let mut manager = state.device_manager.lock()
-                            .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
+                            // Get device channels
+                            let channels = {
+                                let mut manager = state.device_manager.lock()
+                                    .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
 
-                        manager.get_device_channels(&device_profile_id)
-                            .map_err(|e| format!("Failed to get device channels: {}", e))?
-                    };
+                                manager.get_device_channels(&device_profile_id)
+                                    .map_err(|e| format!("Failed to get device channels: {}", e))?
+                            };
 
-                    // Inject channels into node
-                    audio_source.set_device_channels(Some(channels));
-                    println!("Successfully injected device channels for '{}'", device_profile_id);
+                            // Inject channels into node
+                            audio_source.set_device_channels(Some(channels));
+                            println!("Successfully injected device channels for '{}'", device_profile_id);
+
+                            results.push(Ok(()));
+                        }
+                        Err(e) => {
+                            results.push(Err(e));
+                            break; // Stop processing on first failure
+                        }
+                    }
                 }
             }
         }
@@ -151,11 +163,28 @@ pub async fn deploy_graph(
         results
     };
 
-    // Check if any device injection failed
-    for result in device_injection_results {
+    // Check if any device injection failed - cleanup started devices if so
+    for result in device_injection_results.iter() {
         if let Err(e) = result {
             let error_msg = format!("Device injection failed: {}", e);
             println!("Error: {}", error_msg);
+
+            // Cleanup: Stop all devices that were successfully started
+            for device_id in started_devices.iter() {
+                println!("Cleaning up device: {}", device_id);
+                let manager_arc = state.device_manager.clone();
+                let device_id_clone = device_id.clone();
+
+                let _ = tokio::task::spawn_blocking(move || {
+                    if let Ok(manager) = manager_arc.lock() {
+                        let runtime = tokio::runtime::Runtime::new().ok()?;
+                        runtime.block_on(async {
+                            let _ = manager.stop_device(&device_id_clone).await;
+                        });
+                    }
+                    Some(())
+                });
+            }
 
             let _ = app.emit("pipeline-status", PipelineStatusEvent {
                 id: pipeline_id.clone(),
