@@ -933,9 +933,27 @@ User Action → UI → Command → Kernel → Update → Event → UI Update
 - Channel mapping (Identity, Reordering, Selection, Merging, Duplication)
 - Tauri command layer for device CRUD operations
 - Device Manager UI with discovery and configuration
-- Integration structure with AudioSourceNode pipeline deployment
+- NodePropertiesPanel integrated into ProcessConfiguration UI
+- Async device creation and channel injection in pipeline deployment
+- Complete hardware → kernel data flow via DeviceChannels
+- Error recovery with device cleanup on deployment failure
+- End-to-end integration testing documented
 
-See: `docs/plans/2025-12-01-hardware-device-management.md` for details.
+**Key Achievements:**
+- Lock-free hardware → kernel communication via crossbeam channels
+- Profile-based device configuration (configure first, use later)
+- Runtime device injection during pipeline deployment
+- Complete data path: Physical Hardware → HAL → DeviceManager → Pipeline
+
+**Known Limitations:**
+- Single device per AudioSourceNode (multi-device support deferred)
+- No automatic device reconnection on hardware disconnection
+- Channel mapping and calibration structures present but not actively applied
+- Device health monitoring not yet implemented
+
+See: `docs/plans/2025-12-01-hardware-device-management.md` for original plan.
+See: `docs/plans/2025-12-01-hardware-integration-finalization.md` for integration completion.
+See: `docs/testing/hardware-e2e-test.md` for testing procedure.
 
 **Phase 6: Graph-to-Pipeline Integration** ✅ Complete (2025-11-27)
 - Graph translator (frontend → backend format)
@@ -945,11 +963,12 @@ See: `docs/plans/2025-12-01-hardware-device-management.md` for details.
 
 See: `docs/implementation/phase6-completion.md` for details.
 
-**Next Phase: Complete Device-to-Pipeline Integration** ⏳ Planned
-- Finalize async device creation in pipeline deployment
-- Integrate NodePropertiesPanel into UI
+**Next Phase: Advanced Device Features** ⏳ Future
 - Real-time channel mapping application
-- Device calibration implementation
+- Calibration workflow implementation
+- Multi-device concurrent operation
+- Device error recovery and auto-reconnection
+- Device health monitoring and diagnostics
 
 ---
 

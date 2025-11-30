@@ -25,9 +25,7 @@ Verify complete data flow: Physical Microphone → HAL → DeviceManager → Aud
 2. Click "Edit Mode" to enable editing
 3. Add an AudioSourceNode to the graph
 4. Select the AudioSourceNode
-5. In properties panel (if integrated), select device from dropdown
-   - **Note**: As of 2025-12-01, NodePropertiesPanel component exists but is not yet integrated into ProcessConfiguration UI
-   - **Workaround**: Device selection will need to be added via direct graph JSON editing or future UI integration
+5. In properties panel (right side), select device from dropdown
 6. Add a DebugSinkNode
 7. Connect AudioSourceNode output → DebugSinkNode input
 8. Click "Deploy Configuration"
@@ -54,46 +52,42 @@ Verify complete data flow: Physical Microphone → HAL → DeviceManager → Aud
 
 - ✅ Device discovery finds real hardware
 - ✅ Device profiles persist across app restarts
-- ⚠️  AudioSourceNode device selection (UI integration pending)
-- ⏳ Device channels injection during pipeline deployment (structure present, full implementation pending)
+- ✅ AudioSourceNode device selection via NodePropertiesPanel
+- ✅ Device channels injection during pipeline deployment
 - ✅ Pipeline processes audio frames
 - ✅ RingBuffer contains audio data
 - ✅ Visualization displays waveform
 
-## Known Limitations (as of 2025-12-01)
+## Known Limitations (as of 2025-12-01 - Updated)
 
-### Pending Implementations:
-1. **Device Injection (Task 9)**:
-   - Structure added to deploy_graph command
-   - Actual device creation and channel injection not yet implemented
-   - Requires async device handling which is complex in sync deployment context
+### Completed in This Phase:
+1. ✅ **Device Injection**: Async device creation and channel injection fully implemented
+2. ✅ **Properties Panel Integration**: NodePropertiesPanel integrated into ProcessConfiguration UI
+3. ✅ **Hardware Data Flow**: Complete path from physical device to kernel established
 
-2. **Properties Panel Integration (Task 10)**:
-   - NodePropertiesPanel component created
-   - Not yet integrated into ProcessConfiguration page
-   - Device dropdown functional in isolation but needs UI hookup
-
-3. **Channel Mapping**:
+### Still Pending (Future Work):
+1. **Channel Mapping**:
    - Channel mapping data structures complete
-   - Real-time channel mapping application not yet implemented
-   - Default identity mapping used
+   - Actual mapping application not yet implemented (default identity mapping used)
+   - Requires integration with AudioDevice stream callback
 
-4. **Calibration**:
+2. **Calibration**:
    - Calibration data model complete
    - Calibration application not yet functional
+   - Requires signal processing integration
 
-5. **Multi-Device Support**:
-   - Only one device can be active at a time
+3. **Multi-Device Support**:
+   - Only one device per AudioSourceNode
    - Concurrent device management not yet implemented
+   - DeviceManager supports it, but pipeline deployment needs enhancement
 
-6. **Device Error Recovery**:
-   - No automatic reconnection on device disconnection
-   - Manual restart required if device fails
+4. **Device Error Recovery**:
+   - Basic cleanup on deployment failure implemented
+   - No automatic reconnection on device disconnection during runtime
+   - No health monitoring or diagnostics
 
 ## Future Work
 
-- Complete device injection in pipeline deployment
-- Integrate NodePropertiesPanel into ProcessConfiguration UI
 - Implement real-time channel mapping
 - Add calibration functionality
 - Support multiple concurrent devices
@@ -109,6 +103,9 @@ Verify complete data flow: Physical Microphone → HAL → DeviceManager → Aud
 
 ## Notes
 
-This test procedure documents the **intended** end-to-end flow for hardware device management. As of the implementation completion date (2025-12-01), the core infrastructure is in place but some integration steps are pending. The test procedure will be fully executable once:
-1. Device injection is completed in deploy_graph
-2. NodePropertiesPanel is integrated into the UI
+This test procedure documents the **complete** end-to-end flow for hardware device management. As of the implementation completion date (2025-12-01), the full hardware integration stack is operational:
+1. ✅ Device injection is completed in deploy_graph
+2. ✅ NodePropertiesPanel is integrated into the UI
+3. ✅ Complete data flow from physical hardware through pipeline to visualization
+
+All phases of this test should be executable. For more detailed testing procedures, see [hardware-e2e-test.md](./hardware-e2e-test.md).
