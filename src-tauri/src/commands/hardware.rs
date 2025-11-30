@@ -18,20 +18,22 @@ pub async fn discover_devices(
 
     // For now, use tokio::task::spawn_blocking workaround
     tokio::task::spawn_blocking(move || {
-        let manager = manager_arc.lock().unwrap();
+        let manager = manager_arc.lock()
+            .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
         // This is still async, so we need to block on it
         tokio::runtime::Handle::current().block_on(manager.discover_all())
+            .map_err(|e| format!("Device discovery failed: {}", e))
     })
     .await
     .map_err(|e| format!("Task join failed: {}", e))?
-    .map_err(|e| format!("Device discovery failed: {}", e))
 }
 
 #[tauri::command]
 pub fn list_device_profiles(
     state: State<'_, AppState>,
 ) -> Result<Vec<DeviceProfile>, String> {
-    let manager = state.device_manager.lock().unwrap();
+    let manager = state.device_manager.lock()
+        .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
     Ok(manager.list_profiles().into_iter().cloned().collect())
 }
 
@@ -40,7 +42,8 @@ pub fn get_device_profile(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<DeviceProfile, String> {
-    let manager = state.device_manager.lock().unwrap();
+    let manager = state.device_manager.lock()
+        .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
 
     manager.get_profile(&id)
         .cloned()
@@ -52,7 +55,8 @@ pub fn add_device_profile(
     state: State<'_, AppState>,
     profile: DeviceProfile,
 ) -> Result<(), String> {
-    let mut manager = state.device_manager.lock().unwrap();
+    let mut manager = state.device_manager.lock()
+        .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
 
     manager.add_profile(profile)
         .map_err(|e| format!("Failed to add profile: {}", e))
@@ -63,7 +67,8 @@ pub fn update_device_profile(
     state: State<'_, AppState>,
     profile: DeviceProfile,
 ) -> Result<(), String> {
-    let mut manager = state.device_manager.lock().unwrap();
+    let mut manager = state.device_manager.lock()
+        .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
 
     manager.update_profile(profile)
         .map_err(|e| format!("Failed to update profile: {}", e))
@@ -74,7 +79,8 @@ pub fn delete_device_profile(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), String> {
-    let mut manager = state.device_manager.lock().unwrap();
+    let mut manager = state.device_manager.lock()
+        .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
 
     manager.delete_profile(&id)
         .map_err(|e| format!("Failed to delete profile: {}", e))
