@@ -3,6 +3,7 @@ pub mod types;
 pub mod registry;
 pub mod drivers;
 pub mod channel_mapper;
+pub mod device_profile;
 pub mod registered;
 pub mod format_converter;
 
@@ -15,4 +16,5 @@ pub use types::{
 pub use registry::HardwareRegistry;
 pub use drivers::AudioDriver;
 pub use channel_mapper::ChannelMapper;
+pub use device_profile::{DeviceProfile, DeviceMetadata};
 pub use registered::*;

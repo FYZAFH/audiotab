@@ -20,7 +20,7 @@ pub struct DeviceInfo {
 }
 
 /// Device configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DeviceConfig {
     pub name: String,
     pub sample_rate: u64,
