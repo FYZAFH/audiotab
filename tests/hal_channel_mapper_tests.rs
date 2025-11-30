@@ -1,73 +1,112 @@
-use audiotab::hal::*;
+use audiotab::hal::{ChannelMapper, ChannelMapping, ChannelRoute};
 
 #[test]
-fn test_channel_mapping_direct() {
+fn test_identity_mapping() {
     let mapping = ChannelMapping {
-        physical_channels: 3,
-        virtual_channels: 3,
+        physical_channels: 4,
+        virtual_channels: 4,
         routing: vec![
             ChannelRoute::Direct(0),
             ChannelRoute::Direct(1),
             ChannelRoute::Direct(2),
+            ChannelRoute::Direct(3),
         ],
     };
 
-    let physical = vec![1.0, 2.0, 3.0];  // Interleaved: [ch0, ch1, ch2]
-    let virtual_mapped = ChannelMapper::apply(&mapping, &physical).unwrap();
+    let physical = vec![1.0, 2.0, 3.0, 4.0];
+    let virtual_samples = ChannelMapper::apply(&mapping, &physical).unwrap();
 
-    assert_eq!(virtual_mapped.len(), 3);
-    assert_eq!(virtual_mapped, vec![1.0, 2.0, 3.0]);
+    assert_eq!(virtual_samples, vec![1.0, 2.0, 3.0, 4.0]);
 }
 
 #[test]
-fn test_channel_mapping_reorder() {
+fn test_reordering() {
     let mapping = ChannelMapping {
-        physical_channels: 3,
-        virtual_channels: 3,
+        physical_channels: 4,
+        virtual_channels: 4,
         routing: vec![
-            ChannelRoute::Direct(2),  // Virt[0] = Phys[2]
-            ChannelRoute::Direct(1),  // Virt[1] = Phys[1]
-            ChannelRoute::Direct(0),  // Virt[2] = Phys[0]
+            ChannelRoute::Reorder(vec![2]),
+            ChannelRoute::Reorder(vec![0]),
+            ChannelRoute::Reorder(vec![3]),
+            ChannelRoute::Reorder(vec![1]),
         ],
     };
 
-    let physical = vec![1.0, 2.0, 3.0];
-    let virtual_mapped = ChannelMapper::apply(&mapping, &physical).unwrap();
+    let physical = vec![1.0, 2.0, 3.0, 4.0];
+    let virtual_samples = ChannelMapper::apply(&mapping, &physical).unwrap();
 
-    assert_eq!(virtual_mapped, vec![3.0, 2.0, 1.0]);  // Reversed
+    assert_eq!(virtual_samples, vec![3.0, 1.0, 4.0, 2.0]);
 }
 
 #[test]
-fn test_channel_mapping_merge() {
+fn test_selection_subset() {
     let mapping = ChannelMapping {
-        physical_channels: 3,
-        virtual_channels: 1,
-        routing: vec![
-            ChannelRoute::Merge(vec![0, 1, 2]),  // Virt[0] = avg(Phys[0,1,2])
-        ],
-    };
-
-    let physical = vec![1.0, 2.0, 3.0];
-    let virtual_mapped = ChannelMapper::apply(&mapping, &physical).unwrap();
-
-    assert_eq!(virtual_mapped.len(), 1);
-    assert_eq!(virtual_mapped[0], 2.0);  // (1+2+3)/3 = 2.0
-}
-
-#[test]
-fn test_channel_mapping_duplicate() {
-    let mapping = ChannelMapping {
-        physical_channels: 1,
-        virtual_channels: 3,
+        physical_channels: 4,
+        virtual_channels: 2,
         routing: vec![
             ChannelRoute::Direct(0),
-            ChannelRoute::Duplicate(0),  // Virt[1] = Phys[0]
-            ChannelRoute::Duplicate(0),  // Virt[2] = Phys[0]
+            ChannelRoute::Direct(2),
         ],
     };
 
-    let physical = vec![5.0];
-    let virtual_mapped = ChannelMapper::apply(&mapping, &physical).unwrap();
+    let physical = vec![1.0, 2.0, 3.0, 4.0];
+    let virtual_samples = ChannelMapper::apply(&mapping, &physical).unwrap();
 
-    assert_eq!(virtual_mapped, vec![5.0, 5.0, 5.0]);
+    assert_eq!(virtual_samples, vec![1.0, 3.0]);
+}
+
+#[test]
+fn test_merging_average() {
+    let mapping = ChannelMapping {
+        physical_channels: 4,
+        virtual_channels: 1,
+        routing: vec![
+            ChannelRoute::Merge(vec![0, 1, 2, 3]),
+        ],
+    };
+
+    let physical = vec![1.0, 3.0, 5.0, 7.0];
+    let virtual_samples = ChannelMapper::apply(&mapping, &physical).unwrap();
+
+    assert_eq!(virtual_samples, vec![4.0]); // (1+3+5+7)/4 = 4.0
+}
+
+#[test]
+fn test_duplication() {
+    let mapping = ChannelMapping {
+        physical_channels: 2,
+        virtual_channels: 4,
+        routing: vec![
+            ChannelRoute::Direct(0),
+            ChannelRoute::Direct(1),
+            ChannelRoute::Duplicate(0),
+            ChannelRoute::Duplicate(1),
+        ],
+    };
+
+    let physical = vec![1.0, 2.0];
+    let virtual_samples = ChannelMapper::apply(&mapping, &physical).unwrap();
+
+    assert_eq!(virtual_samples, vec![1.0, 2.0, 1.0, 2.0]);
+}
+
+#[test]
+fn test_complex_mapping() {
+    // Physical: [L, R, C, LFE]
+    // Virtual: [Mono (L+R avg), C, LFE, LFE-duplicate]
+    let mapping = ChannelMapping {
+        physical_channels: 4,
+        virtual_channels: 4,
+        routing: vec![
+            ChannelRoute::Merge(vec![0, 1]),  // L+R average
+            ChannelRoute::Direct(2),           // C passthrough
+            ChannelRoute::Direct(3),           // LFE passthrough
+            ChannelRoute::Duplicate(3),        // LFE duplicate
+        ],
+    };
+
+    let physical = vec![2.0, 4.0, 3.0, 1.0];
+    let virtual_samples = ChannelMapper::apply(&mapping, &physical).unwrap();
+
+    assert_eq!(virtual_samples, vec![3.0, 3.0, 1.0, 1.0]);
 }
