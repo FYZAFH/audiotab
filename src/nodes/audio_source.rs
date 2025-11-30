@@ -41,6 +41,10 @@ pub struct AudioSourceNode {
     #[param(default = "1", min = 1.0, max = 32.0)]
     pub num_channels: usize,
 
+    // NEW: Device selection parameter
+    #[param(default = "\"\"")]
+    pub device_profile_id: String,
+
     #[serde(skip)]
     sequence: u64,
 
@@ -72,6 +76,7 @@ impl Clone for AudioSourceNode {
             sample_rate: self.sample_rate,
             buffer_size: self.buffer_size,
             num_channels: self.num_channels,
+            device_profile_id: self.device_profile_id.clone(),
             sequence: self.sequence,
             ring_buffer: self.ring_buffer.clone(),
             device_channels: None, // Don't clone device channels
@@ -86,6 +91,7 @@ impl Default for AudioSourceNode {
             sample_rate: 48000,
             buffer_size: 1024,
             num_channels: 1,
+            device_profile_id: String::new(),
             sequence: 0,
             ring_buffer: None,
             device_channels: None,
@@ -111,6 +117,7 @@ impl AudioSourceNode {
             sample_rate: 48000,
             buffer_size: 1024,
             num_channels: 1,
+            device_profile_id: String::new(),
             sequence: 0,
             ring_buffer,
             device_channels: Some(channels),
@@ -142,6 +149,12 @@ impl ProcessingNode for AudioSourceNode {
             }
             self.num_channels = nc_usize;
         }
+
+        // NEW: Extract device_profile_id
+        if let Some(profile_id) = config.get("device_profile_id").and_then(|v| v.as_str()) {
+            self.device_profile_id = profile_id.to_string();
+        }
+
         Ok(())
     }
 
@@ -222,6 +235,10 @@ impl ProcessingNode for AudioSourceNode {
         frame.sequence_id = self.sequence;
 
         Ok(frame)
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 
     async fn on_destroy(&mut self) -> Result<()> {
