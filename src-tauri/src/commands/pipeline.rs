@@ -170,12 +170,13 @@ pub async fn deploy_graph(
             println!("Error: {}", error_msg);
 
             // Cleanup: Stop all devices that were successfully started
+            let mut cleanup_handles = Vec::new();
             for device_id in started_devices.iter() {
                 println!("Cleaning up device: {}", device_id);
                 let manager_arc = state.device_manager.clone();
                 let device_id_clone = device_id.clone();
 
-                let _ = tokio::task::spawn_blocking(move || {
+                let handle = tokio::task::spawn_blocking(move || {
                     if let Ok(manager) = manager_arc.lock() {
                         let runtime = tokio::runtime::Runtime::new().ok()?;
                         runtime.block_on(async {
@@ -184,6 +185,12 @@ pub async fn deploy_graph(
                     }
                     Some(())
                 });
+                cleanup_handles.push(handle);
+            }
+
+            // Wait for all cleanup to complete
+            for handle in cleanup_handles {
+                let _ = handle.await;
             }
 
             let _ = app.emit("pipeline-status", PipelineStatusEvent {
