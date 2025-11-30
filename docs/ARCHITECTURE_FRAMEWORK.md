@@ -926,6 +926,17 @@ User Action → UI → Command → Kernel → Update → Event → UI Update
 
 ## Implementation Progress
 
+**Phase 7: Hardware Device Management** ✅ Complete (2025-12-01)
+- DeviceProfile data model with configuration and metadata
+- Device persistence layer (JSON storage)
+- DeviceManager for lifecycle management
+- Channel mapping (Identity, Reordering, Selection, Merging, Duplication)
+- Tauri command layer for device CRUD operations
+- Device Manager UI with discovery and configuration
+- Integration structure with AudioSourceNode pipeline deployment
+
+See: `docs/plans/2025-12-01-hardware-device-management.md` for details.
+
 **Phase 6: Graph-to-Pipeline Integration** ✅ Complete (2025-11-27)
 - Graph translator (frontend → backend format)
 - Pipeline deployment via Tauri commands
@@ -934,7 +945,11 @@ User Action → UI → Command → Kernel → Update → Event → UI Update
 
 See: `docs/implementation/phase6-completion.md` for details.
 
-**Next Phase: Pipeline Execution & Visualization** ⏳ Planned
+**Next Phase: Complete Device-to-Pipeline Integration** ⏳ Planned
+- Finalize async device creation in pipeline deployment
+- Integrate NodePropertiesPanel into UI
+- Real-time channel mapping application
+- Device calibration implementation
 
 ---
 
