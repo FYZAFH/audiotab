@@ -21,7 +21,7 @@ impl DeviceStorage {
 
     /// Save device profile to disk
     pub fn save(&self, profile: &DeviceProfile) -> Result<()> {
-        let path = self.profile_path(&profile.id);
+        let path = self.profile_path(&profile.id)?;
         let json = serde_json::to_string_pretty(profile)
             .context("Failed to serialize device profile")?;
 
@@ -33,7 +33,7 @@ impl DeviceStorage {
 
     /// Load device profile from disk
     pub fn load(&self, id: &str) -> Result<DeviceProfile> {
-        let path = self.profile_path(id);
+        let path = self.profile_path(id)?;
         let json = fs::read_to_string(&path)
             .context(format!("Failed to read profile from {:?}", path))?;
 
@@ -45,7 +45,7 @@ impl DeviceStorage {
 
     /// Delete device profile from disk
     pub fn delete(&self, id: &str) -> Result<()> {
-        let path = self.profile_path(id);
+        let path = self.profile_path(id)?;
         if path.exists() {
             fs::remove_file(&path)
                 .context(format!("Failed to delete profile at {:?}", path))?;
@@ -67,8 +67,11 @@ impl DeviceStorage {
 
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 let json = fs::read_to_string(&path)?;
-                if let Ok(profile) = serde_json::from_str::<DeviceProfile>(&json) {
-                    profiles.push(profile);
+                match serde_json::from_str::<DeviceProfile>(&json) {
+                    Ok(profile) => profiles.push(profile),
+                    Err(e) => {
+                        eprintln!("Warning: Failed to parse device profile at {:?}: {}", path, e);
+                    }
                 }
             }
         }
@@ -76,8 +79,21 @@ impl DeviceStorage {
         Ok(profiles)
     }
 
-    fn profile_path(&self, id: &str) -> PathBuf {
-        self.storage_dir.join(format!("{}.json", id))
+    fn profile_path(&self, id: &str) -> Result<PathBuf> {
+        // Validate ID to prevent path traversal attacks
+        if id.is_empty() {
+            anyhow::bail!("Profile ID cannot be empty");
+        }
+
+        if id == "." || id == ".." {
+            anyhow::bail!("Profile ID cannot be '.' or '..'");
+        }
+
+        if id.contains('/') || id.contains('\\') {
+            anyhow::bail!("Profile ID cannot contain path separators");
+        }
+
+        Ok(self.storage_dir.join(format!("{}.json", id)))
     }
 }
 
@@ -142,5 +158,57 @@ mod tests {
 
         let profiles = storage.list_all().unwrap();
         assert_eq!(profiles.len(), 3);
+    }
+
+    #[test]
+    fn test_delete_profile() {
+        let dir = tempdir().unwrap();
+        let storage = DeviceStorage::new(dir.path().to_path_buf()).unwrap();
+
+        let profile = DeviceProfile {
+            id: "test-delete".to_string(),
+            alias: "Test Delete".to_string(),
+            driver_id: "test-driver".to_string(),
+            device_id: "device-0".to_string(),
+            config: DeviceConfig {
+                name: "Test".to_string(),
+                sample_rate: 48000,
+                format: SampleFormat::F32,
+                buffer_size: 1024,
+                channel_mapping: ChannelMapping::default(),
+                calibration: Calibration::default(),
+            },
+            metadata: DeviceMetadata::default(),
+        };
+
+        // Save and verify it exists
+        storage.save(&profile).unwrap();
+        assert!(storage.load(&profile.id).is_ok());
+
+        // Delete existing profile
+        storage.delete(&profile.id).unwrap();
+        assert!(storage.load(&profile.id).is_err());
+
+        // Deleting non-existent profile should not error
+        storage.delete("non-existent-profile").unwrap();
+    }
+
+    #[test]
+    fn test_path_traversal_validation() {
+        let dir = tempdir().unwrap();
+        let storage = DeviceStorage::new(dir.path().to_path_buf()).unwrap();
+
+        // Test path separators
+        assert!(storage.profile_path("../etc/passwd").is_err());
+        assert!(storage.profile_path("foo/bar").is_err());
+        assert!(storage.profile_path("foo\\bar").is_err());
+
+        // Test special cases
+        assert!(storage.profile_path("").is_err());
+        assert!(storage.profile_path(".").is_err());
+        assert!(storage.profile_path("..").is_err());
+
+        // Valid ID should work
+        assert!(storage.profile_path("valid-id").is_ok());
     }
 }
