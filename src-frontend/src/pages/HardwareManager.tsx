@@ -1,9 +1,5 @@
-import { HardwareConfig } from '../components/HardwareConfig';
+import { DeviceManager } from './DeviceManager';
 
 export function HardwareManager() {
-  return (
-    <div style={{ width: '100%', height: '100vh', overflow: 'auto' }}>
-      <HardwareConfig />
-    </div>
-  );
+  return <DeviceManager />;
 }
