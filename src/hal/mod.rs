@@ -5,6 +5,7 @@ pub mod drivers;
 pub mod channel_mapper;
 pub mod device_profile;
 pub mod device_storage;
+pub mod device_manager;
 pub mod registered;
 pub mod format_converter;
 
@@ -19,4 +20,5 @@ pub use drivers::AudioDriver;
 pub use channel_mapper::ChannelMapper;
 pub use device_profile::{DeviceProfile, DeviceMetadata};
 pub use device_storage::DeviceStorage;
+pub use device_manager::DeviceManager;
 pub use registered::*;
