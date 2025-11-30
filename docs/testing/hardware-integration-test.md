@@ -3,6 +3,8 @@
 ## Goal
 Verify complete data flow: Physical Microphone → HAL → DeviceManager → AudioSourceNode → Pipeline → RingBuffer → Visualization
 
+> **Note**: For complete end-to-end testing with this implementation, see [hardware-e2e-test.md](./hardware-e2e-test.md).
+
 ## Prerequisites
 - MacBook with built-in microphone OR USB audio interface
 - Application running in development mode
