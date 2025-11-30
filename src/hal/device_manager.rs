@@ -147,6 +147,17 @@ impl DeviceManager {
         Ok(())
     }
 
+    /// Get device channels for a running device
+    pub fn get_device_channels(&mut self, profile_id: &str) -> Result<super::DeviceChannels> {
+        let mut active = self.active_devices.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to acquire device lock: {}", e))?;
+
+        let device = active.get_mut(profile_id)
+            .ok_or_else(|| anyhow::anyhow!("Device '{}' not found or not started", profile_id))?;
+
+        Ok(device.get_channels())
+    }
+
     /// Check if a device is currently active
     pub fn is_device_active(&self, profile_id: &str) -> bool {
         self.active_devices.lock()

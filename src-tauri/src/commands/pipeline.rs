@@ -98,25 +98,72 @@ pub async fn deploy_graph(
     pipeline.set_ring_buffer(state.ring_buffer.clone());
 
     // Step 4: Inject DeviceChannels into AudioSourceNodes with device_profile_id
-    // TODO: This is a simplified implementation. Full implementation requires:
-    // - Proper async handling of device creation/starting
-    // - Error recovery if device creation fails
-    // - Device lifecycle management
-    {
-        let _device_manager = state.device_manager.lock()
-            .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
+    let device_injection_results: Vec<Result<(), String>> = {
+        let mut results = Vec::new();
 
-        for (_node_id, node) in pipeline.nodes.iter_mut() {
-            if let Some(audio_source) = node.as_any_mut().downcast_mut::<audiotab::nodes::AudioSourceNode>() {
+        for (node_id, node) in pipeline.nodes_mut().iter_mut() {
+            if let Some(audio_source) = node.as_any_mut()
+                .downcast_mut::<audiotab::nodes::AudioSourceNode>()
+            {
                 let device_profile_id = audio_source.device_profile_id.clone();
 
                 if !device_profile_id.is_empty() {
-                    // Note: Actual device creation and channel injection would happen here
-                    // This requires async device creation which is complex in this sync context
-                    println!("Note: AudioSourceNode requests device profile '{}'", device_profile_id);
-                    println!("Full device injection implementation pending (see Task 9 notes in plan)");
+                    println!("AudioSourceNode '{}' requests device profile '{}'", node_id, device_profile_id);
+
+                    // Async device creation and channel injection
+                    let manager_arc = state.device_manager.clone();
+                    let device_id_clone = device_profile_id.clone();
+
+                    let result = tokio::task::spawn_blocking(move || {
+                        let mut manager = manager_arc.lock()
+                            .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
+
+                        // Create runtime for async start_device
+                        let runtime = tokio::runtime::Runtime::new()
+                            .map_err(|e| format!("Failed to create runtime: {}", e))?;
+
+                        runtime.block_on(async {
+                            manager.start_device(&device_id_clone).await
+                                .map_err(|e| format!("Failed to start device '{}': {}", device_id_clone, e))
+                        })
+                    })
+                    .await
+                    .map_err(|e| format!("Device creation task failed: {}", e))?;
+
+                    results.push(result.map(|_| ()));
+
+                    // Get device channels
+                    let channels = {
+                        let mut manager = state.device_manager.lock()
+                            .map_err(|e| format!("Device manager lock poisoned: {}", e))?;
+
+                        manager.get_device_channels(&device_profile_id)
+                            .map_err(|e| format!("Failed to get device channels: {}", e))?
+                    };
+
+                    // Inject channels into node
+                    audio_source.set_device_channels(Some(channels));
+                    println!("Successfully injected device channels for '{}'", device_profile_id);
                 }
             }
+        }
+
+        results
+    };
+
+    // Check if any device injection failed
+    for result in device_injection_results {
+        if let Err(e) = result {
+            let error_msg = format!("Device injection failed: {}", e);
+            println!("Error: {}", error_msg);
+
+            let _ = app.emit("pipeline-status", PipelineStatusEvent {
+                id: pipeline_id.clone(),
+                state: "Error".to_string(),
+                error: Some(error_msg.clone()),
+            });
+
+            return Err(error_msg);
         }
     }
 

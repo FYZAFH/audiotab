@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use crate::core::{ProcessingNode, DataFrame};
-use crate::nodes::{AudioSourceNode, GainNode, DebugSinkNode};
+use crate::nodes::{AudioSourceNode, GainNode, DebugSinkNode, FFTNode, FilterNode, TriggerSourceNode};
 use crate::observability::{NodeMetrics, MetricsCollector, PipelineMonitor};
 use crate::resilience::{ResilientNode, ErrorPolicy};
 use crate::engine::state::PipelineState;
@@ -59,6 +59,9 @@ impl AsyncPipeline {
                     "AudioSourceNode" | "SineGenerator" => Box::new(AudioSourceNode::default()),
                     "GainNode" | "Gain" => Box::new(GainNode::default()),
                     "DebugSinkNode" | "Print" => Box::new(DebugSinkNode::default()),
+                    "FFTNode" => Box::new(FFTNode::default()),
+                    "FilterNode" => Box::new(FilterNode::default()),
+                    "TriggerSourceNode" => Box::new(TriggerSourceNode::default()),
                     _ => return Err(anyhow!("Unknown node type: {}", node_type)),
                 };
 
@@ -98,6 +101,27 @@ impl AsyncPipeline {
             state: PipelineState::Idle,
             priority,
         })
+    }
+
+    /// Inject RingBuffer into visualization-capable nodes
+    ///
+    /// This method sets up the RingBuffer for nodes that support visualization.
+    /// Must be called after `from_json()` but before `start()`.
+    pub fn set_ring_buffer(&mut self, ring_buffer: Arc<std::sync::Mutex<crate::visualization::RingBufferWriter>>) {
+        for (_id, node) in self.nodes.iter_mut() {
+            // Try to downcast to AudioSourceNode
+            if let Some(audio_source) = node.as_any_mut().downcast_mut::<AudioSourceNode>() {
+                audio_source.set_ring_buffer(Some(ring_buffer.clone()));
+            }
+        }
+    }
+
+    /// Get mutable access to the pipeline's nodes
+    ///
+    /// This method provides mutable access to the nodes for device channel injection.
+    /// Must be called after `from_json()` but before `start()`.
+    pub fn nodes_mut(&mut self) -> &mut HashMap<String, Box<dyn ProcessingNode>> {
+        &mut self.nodes
     }
 
     /// Get current pipeline state
