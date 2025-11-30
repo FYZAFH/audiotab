@@ -25,6 +25,7 @@ interface FlowState {
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
   addNode: (type: string, position: { x: number; y: number }, metadata: NodeMetadata) => void;
+  updateNodeData: (nodeId: string, newData: Partial<FlowNodeData>) => void;
   deleteSelected: () => void;
   undo: () => void;
   redo: () => void;
@@ -51,6 +52,20 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     set((state) => {
       const newNodes = applyNodeChanges(changes, state.nodes) as FlowNode[];
 
+      // Check if any nodes were removed
+      const removedNodeIds = changes
+        .filter((change) => change.type === 'remove')
+        .map((change) => (change as any).id);
+
+      // Filter out edges connected to removed nodes
+      const newEdges = removedNodeIds.length > 0
+        ? state.edges.filter(
+            (edge) =>
+              !removedNodeIds.includes(edge.source) &&
+              !removedNodeIds.includes(edge.target)
+          )
+        : state.edges;
+
       // Only save history for meaningful changes (not during active dragging)
       const shouldSaveHistory = changes.some((change) =>
         change.type === 'add' ||
@@ -62,7 +77,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         saveHistory(state);
       }
 
-      return { nodes: newNodes };
+      return { nodes: newNodes, edges: newEdges };
     });
   },
 
@@ -105,12 +120,38 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     });
   },
 
+  updateNodeData: (nodeId, newData) => {
+    set((state) => {
+      const updatedNodes = state.nodes.map((node) =>
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, ...newData } }
+          : node
+      );
+      saveHistory(state);
+      return { nodes: updatedNodes };
+    });
+  },
+
   deleteSelected: () => {
     set((state) => {
-      saveHistory(state);
+      const selectedNodeIds = new Set(state.nodes.filter((n) => n.selected).map((n) => n.id));
+      const hasSelection = selectedNodeIds.size > 0 || state.edges.some((e) => e.selected);
+
+      if (hasSelection) {
+        saveHistory(state);
+      }
+
+      const remainingNodes = state.nodes.filter((n) => !n.selected);
+      const remainingEdges = state.edges.filter(
+        (e) =>
+          !e.selected &&
+          !selectedNodeIds.has(e.source) &&
+          !selectedNodeIds.has(e.target),
+      );
+
       return {
-        nodes: state.nodes.filter((n) => !n.selected),
-        edges: state.edges.filter((e) => !e.selected),
+        nodes: remainingNodes,
+        edges: remainingEdges,
       };
     });
   },
@@ -149,7 +190,11 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         id: n.id,
         type: n.data.metadata.id,
         position: n.position,
-        parameters: n.data.parameters,
+        parameters: {
+          ...n.data.parameters,
+          // Include device_profile_id if present
+          ...((n.data as any).device_profile_id ? { device_profile_id: (n.data as any).device_profile_id } : {}),
+        },
       })),
       edges: edges.map((e) => ({
         id: e.id,
